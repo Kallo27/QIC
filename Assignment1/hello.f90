@@ -2,7 +2,7 @@
 !! QUANTUM INFORMATION AND COMPUTING 2024/25 !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Assignment 1.1 - SETUP
+! Assignment 1.1.a - SETUP
 ! Open a code editor and write your first program in FORTRAN
 
 ! This simple program 'hello' prints "Hello, Fortran!" to the output.
