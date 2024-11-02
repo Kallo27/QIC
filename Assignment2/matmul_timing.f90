@@ -17,9 +17,9 @@ module matmul_timing
   !    This module implements a matrix multiplication function, 
   !    which performs the multiplication in three different ways: row by
   !    column, column by row and using the intrinsic 'matmul' function.
-  !    For each of them, the timing of the operation is printed to
-  !    screen, to compare the different performances. Each multiplication
-  !    is performed with 10 fractions of n, to see the how the performance
+  !    For each of them, the timing of the operation is saved to file, 
+  !    to compare the different performances. Each multiplication is 
+  !    performed with 10 fractions of n, to see the how the performance
   !    scales with increasing sizes of the matrix.
   ! 
   !  =====================================================================  
