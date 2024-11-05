@@ -141,9 +141,9 @@ contains
     end if
 
     ! Actual multiplication
-    do j = 1, size(C, 1)
-      do i = 1, size(C, 2)
-        do k = 1, size(A, 2)
+    do i = 1, size(C, 2)
+      do k = 1, size(A, 2)
+        do j = 1, size(C, 1)
           C(i, j) = C(i, j) + A(i, k) * B(k, j)
         end do
       end do
@@ -228,7 +228,7 @@ contains
 
     ! Output the elapsed times in a structured format.
     print *, "RC", ",", n, ",", elapsed_time1
-    print *, "CR", ",", n, ",", elapsed_time1
+    print *, "CR", ",", n, ",", elapsed_time2
     print *, "I", ",", n, ",", elapsed_time3
 
     ! Final print statement -> ensures program ended without errors.

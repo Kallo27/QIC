@@ -72,6 +72,7 @@
 # IMPORT ZONE
 import subprocess
 import sys
+import os
 
 # ============================================================================================
 
@@ -94,7 +95,7 @@ def compile_fortran(source_file, exec_name, *object_files):
     print(f'Compiling {source_file} with additional modules: {object_files}...')
     
     # Create the command with source file and object files
-    command = ['gfortran', '-o', exec_name, source_file] + list(object_files)
+    command = ['gfortran', '-O3', '-o' , exec_name, source_file] + list(object_files)
     subprocess.run(command, check=True)
     print('Compilation successful!')
   except subprocess.CalledProcessError as e:
@@ -122,6 +123,10 @@ def save_to_file(filename, data):
 
 # Main function to run the program for different values of n
 def main(Nmin, Nmax, m):
+  # Check if directory Data exists, otherwise mkdir.
+  if not os.path.exists('Data'):
+    os.makedirs('Data')
+    
   # Calculate the fraction increments
   for i in range(m):
     # Calculate n based on the current division
@@ -143,11 +148,11 @@ def main(Nmin, Nmax, m):
 
       # Save each elapsed time to separate files
       if elapsed_time1:
-        save_to_file(f'rowbycolumn.txt', elapsed_time1)
+        save_to_file(f'Data/rowbycolumn.txt', elapsed_time1)
       if elapsed_time2:
-        save_to_file(f'columnbyrow.txt', elapsed_time2)
+        save_to_file(f'Data/columnbyrow.txt', elapsed_time2)
       if elapsed_time3:
-        save_to_file(f'intrinsic.txt', elapsed_time3)
+        save_to_file(f'Data/intrinsic.txt', elapsed_time3)
 
 # ============================================================================================
 
