@@ -86,7 +86,7 @@ module complex_matrix
     end interface
 
     interface operator(.Adj.)
-    module procedure calculate_adjoint
+      module procedure calculate_adjoint
     end interface
 
   contains
