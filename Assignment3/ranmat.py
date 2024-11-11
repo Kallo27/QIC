@@ -162,9 +162,9 @@ def compute_spacing_distr(N, seed, N_matrices, mode, trim = False):
 
 # =========================================================
 
-def fitting_function(s, a, alpha, b, beta):
+def wigner_dyson(s, a, alpha, b, beta):
   """
-  fitting_function:
+  wigner_dyson:
     Fuction used for fitting spacing distributions.
 
   Parameters
@@ -241,8 +241,8 @@ def fitting_distribution(distr, bins=100, p0=[1, 1, -1, 1], verb=False):
   bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
   counts = counts / sum(counts)
 
-  params, pcov = curve_fit(fitting_function, bin_centers, counts, p0=p0)
-  expected = fitting_function(bin_centers, *params)
+  params, pcov = curve_fit(wigner_dyson, bin_centers, counts, p0=p0)
+  expected = wigner_dyson(bin_centers, *params)
   rms_error = RMSE(counts, expected)
   
   if verb:
@@ -283,7 +283,7 @@ def plot_fit(distr, bins=100, p0=[1, 1, -1, 1]):
   
   plt.figure(figsize=(8, 6))
   plt.bar(bin_centers, normalized_counts, width=(bin_edges[1] - bin_edges[0]), color='orange', edgecolor='orange', alpha=0.7, label='Normalized histogram')
-  plt.plot(s_vals, fitting_function(s_vals, *best_params), 'r-', label='Fitted function', linewidth=1)
+  plt.plot(s_vals, wigner_dyson(s_vals, *best_params), 'r-', label='Fitted function', linewidth=1)
   plt.title('Histogram of spacing distribution')
   plt.xlabel('Spacing (s)')
   plt.ylabel('P(s)')
