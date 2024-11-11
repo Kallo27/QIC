@@ -11,8 +11,32 @@
 ! (d) Plot results for different multiplication methods
 
 module debugger
+  !  ===================================================================== 
+  !  
+  !    This module implements a checkpoint function for debugging, 
+  !    allowing users to print custom messages when a checkpoint 
+  !    is reached, if debugging is enabled.
+  ! 
+  !  =====================================================================  
+  !  
+  !  SUBROUTINES:
+  !
+  !  checkpoint(debug, msg)
+  !
+  !           Inputs  | debug (logical): if true, enables printing of
+  !                   |                 checkpoint messages.
+  !                   | msg (character(len=*), optional): a custom message 
+  !                   |                 to be displayed at the checkpoint.
+  !                   |
+  !                   | If debug is set to true and no message is provided,
+  !                   | the default message "Checkpoint reached." is displayed. 
+  !                   |
+  !                   | No outputs are returned.
+
   implicit none
+
 contains
+
   subroutine checkpoint(debug, msg)
     logical, intent(in) :: debug
     character(len=*), optional :: msg
@@ -25,4 +49,5 @@ contains
       end if
     end if
   end subroutine checkpoint
+  
 end module debugger
