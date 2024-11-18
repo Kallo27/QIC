@@ -42,12 +42,11 @@ def kinetic_matrix(K, N, dx, order):
 
 def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
   # Constants
-  hbar = 1.0  # Reduced Planck constant (set to 1 in atomic units)
   m = 1.0     # Mass of the particle (set to 1 in atomic units)
   
   # Discretization
-  x = np.linspace(-L, L, N)
-  dx = x[1] - x[0]
+  dx = 2 * L / N
+  x = np.linspace(-L, L, N) + dx / 2
 
   # Construct the Hamiltonian matrix
   N = N
@@ -203,7 +202,9 @@ def generate_colors(n):
 # ===========================================================================================================
 
 def plot_wf_en(omega, N, L, k, order=None):
-  x = np.linspace(-L, L, N)
+  dx = 2 * L / N
+  x = np.linspace(-L, L, N) + dx / 2
+  
   if order is not None:
     energies, wavefunctions = harmonic_oscillator_spectrum(omega, L, N, order)
   else:
