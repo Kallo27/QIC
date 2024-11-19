@@ -1,10 +1,11 @@
 import numpy as np
 import debugger as db
-import math
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-from scipy.linalg import eigh
+from scipy.linalg import eigh, norm
 from itertools import cycle
+from scipy.special import factorial
 
 
 def kinetic_matrix(K, N, dx, order):
@@ -32,17 +33,19 @@ def kinetic_matrix(K, N, dx, order):
     K += np.diag(-3 * factor / 4 * np.ones(N-1), k=-1)  # First lower diagonal
     K += np.diag(3 * factor / 40 * np.ones(N-2), k=2)  # Second upper diagonal
     K += np.diag(3 * factor / 40 * np.ones(N-2), k=-2)  # Second lower diagonal
-    K += np.diag(-factor / 120 * np.ones(N-3), k=3)  # Third upper diagonal
-    K += np.diag(-factor / 120 * np.ones(N-3), k=-3)  # Third lower diagonal
+    K += np.diag(-factor / 180 * np.ones(N-3), k=3)  # Third upper diagonal
+    K += np.diag(-factor / 180 * np.ones(N-3), k=-3)  # Third lower diagonal
     
   else:
     db.checkpoint(debug=True, msg1="APPROXIMATION ORDER", msg2="Unsupported order. Please choose order = 2, 4, or 6.", stop=True)
   
   return K
 
-def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
+# ===========================================================================================================
+
+def hamiltonian(omega, L, N=1000, order=2):
   # Constants
-  m = 1.0     # Mass of the particle (set to 1 in atomic units)
+  m = 1.0 # Mass of the particle (set to 1 in atomic units)
   
   # Discretization
   dx = 2 * L / N
@@ -60,11 +63,16 @@ def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
   V = np.diag(V_diag)
 
   H = K + V
+  return H
 
+# ===========================================================================================================
+
+def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
+  H = hamiltonian(omega, L, N, order)
   energies, psi = eigh(H)
-  norm = np.sqrt(np.sum(np.abs(psi)**2, axis=0))
+  
   for i in range(len(energies)):
-    psi[:, i] = psi[:, i] / norm
+    psi[:, i] = psi[:, i] / norm(psi[:, i])
     
   center_index = N // 2  # assuming symmetric grid centered around x = 0
 
@@ -87,6 +95,7 @@ def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
     
   return energies, psi.T
 
+# ===========================================================================================================
 
 def hermite(x, n):
   """
@@ -178,7 +187,7 @@ def harmonic_wfc(x, omega=1.0, n=0):
     m = 1.0
     
     # Components of the analytical solution for stationary states.
-    prefactor = 1 / np.sqrt(2**n * math.factorial(n)) * ((m * omega) / (np.pi * hbar))**0.25
+    prefactor = 1 / np.sqrt(2**n * factorial(n)) * ((m * omega) / (np.pi * hbar))**0.25
     x_coeff = np.sqrt(m * omega / hbar)
     exponential = np.exp(- (m * omega * x**2) / (2 * hbar))
     
@@ -186,8 +195,7 @@ def harmonic_wfc(x, omega=1.0, n=0):
     psi = prefactor * exponential * hermite(x_coeff * x, n)
     
     # Normalization condition.
-    norm = np.sqrt(np.sum(np.abs(psi)**2) * (x[1] - x[0]))  # Integrate using the grid spacing.
-    psi_normalized = psi / norm
+    psi_normalized = psi / norm(psi)
     
     return psi_normalized
   
@@ -201,7 +209,7 @@ def generate_colors(n):
 
 # ===========================================================================================================
 
-def plot_wf_en(omega, N, L, k, order=None):
+def plot_wf_en(omega, L, N, k, order=None):
   dx = 2 * L / N
   x = np.linspace(-L, L, N) + dx / 2
   
@@ -237,3 +245,271 @@ def plot_wf_en(omega, N, L, k, order=None):
 
   fig.tight_layout()
   plt.show()
+  
+# ===========================================================================================================
+
+def energy_difference(omega, L, N, k, orders):  
+  differences = np.ndarray((len(orders), k))
+  an_en = [harmonic_en(omega, k) for k in range(0, k)]
+  
+  for i, order in enumerate(orders):
+    comp_en, _ = harmonic_oscillator_spectrum(omega, L, N, order)
+    
+    if len(comp_en) < k:
+      db.checkpoint(debug= True, msg1=f"Warning: Number of computed energies is less than {k}. Using available energies.", stop=False)
+      comp_en = np.pad(comp_en, (0, k - len(comp_en)), constant_values=np.nan)
+        
+    differences[i] = np.abs(comp_en[:k] - an_en) / comp_en[:k] # Compare the first k energies
+              
+  return differences
+
+# ===========================================================================================================
+
+def plot_energy_orders(omega, L, N, k, orders):
+  plt.figure(figsize=(8, 4))
+  
+  differences = energy_difference(omega, L, N, k, orders)
+
+  sns.heatmap(differences, cmap='viridis', xticklabels=[f"$E_{{{i}}}$" for i in range(k)], 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy Difference'})
+  
+  plt.title("Energy difference for different eigenvalues at different orders")
+  plt.xlabel("Eigenvalue index")
+  plt.ylabel("Order")
+  plt.tight_layout()
+  plt.show()
+  
+# ===========================================================================================================
+
+def check_schroedinger(omega, L, N, k, orders):
+  diff = np.ndarray((len(orders), k))
+  for i, order in enumerate(orders):
+    H = hamiltonian(omega, L, N, order)
+    energies, psi = harmonic_oscillator_spectrum(omega, L, N, order)
+      
+    for j in range(k):
+      lhs = np.dot(psi[j], np.dot(H, psi[j]))
+      diff[i, j] = np.abs(lhs - energies[j])   
+    
+  return diff
+
+# ===========================================================================================================
+
+def plot_schroedinger(omega, L, N, k, orders):
+  plt.figure(figsize=(8, 4))
+  
+  differences = check_schroedinger(omega, L, N, k, orders)
+
+  step = max(1, k // 10)  # Ensure at most 10 labels
+  xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
+
+  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
+  
+  plt.title("Schroedinger equation check for computational eigenstates")
+  plt.xlabel("Eigenstate index")
+  plt.ylabel("Order")
+  plt.tight_layout()
+  plt.show()
+  
+# ===========================================================================================================
+
+def wfc_difference(omega, L, N, k, orders):
+  dx = 2 * L / N
+  x = np.linspace(-L, L, N) + dx / 2
+  
+  differences = np.zeros((len(orders), k))
+  
+  for i, order in enumerate(orders):
+    _, comp_wfc = harmonic_oscillator_spectrum(omega, L, N, order)
+    
+    if comp_wfc.shape[0] < k:  # Check if fewer eigenstates are computed
+      db.checkpoint(debug=True, msg1=f"Warning: Number of computed eigenstates is less than {k}. Using available eigenstates.", stop=False)
+      padding = np.zeros((k - comp_wfc.shape[0], N))  # Pad with zeros
+      comp_wfc = np.vstack([comp_wfc, padding])
+          
+    for j in range(k):
+      an_wfc = harmonic_wfc(x, omega, j)
+      differences[i, j] = 1 - np.abs(np.dot(comp_wfc[j], an_wfc)) 
+
+  return differences
+
+# ===========================================================================================================
+
+def plot_wfc_orders(omega, L, N, k, orders):
+  plt.figure(figsize=(8, 4))
+  
+  differences = wfc_difference(omega, L, N, k, orders)
+
+  step = max(1, k // 10)  # Ensure at most 10 labels
+  xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
+
+  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
+  
+  plt.title("Dot product between expected and computed eigenstates")
+  plt.xlabel("Eigenstate index")
+  plt.ylabel("Order")
+  plt.tight_layout()
+  plt.show()
+  
+# ===========================================================================================================
+
+def check_stability(omega, L, N, k, order, num_runs):
+  eigenvals_runs = []
+  eigenvecs_runs = []
+  
+  for _ in range(num_runs):
+    eigenvalues, eigenvectors = harmonic_oscillator_spectrum(omega, L, N, order)  # Adjust parameters as needed
+    eigenvals_runs.append(eigenvalues[:k])          # Store the first k eigenvalues
+    eigenvecs_runs.append(eigenvectors[:k])     # Store the first k eigenvectors
+  
+  eigenvals_runs = np.array(eigenvals_runs)
+  eigenvecs_runs = np.array(eigenvecs_runs)
+  
+  check_eigen = eigenvals_runs[-1]
+  
+  eigenvalues_mean = np.mean(eigenvals_runs, axis=0)
+  eigenvalues_std = np.std(eigenvals_runs, axis=0)
+  dot_matrix = np.zeros((k, num_runs - 1))
+  
+  for i in range(k):
+    for j in range(1, num_runs):
+      dot_product = np.dot(eigenvecs_runs[j, i, :], eigenvecs_runs[j - 1, i, :])
+      dot_matrix[i, j - 1] = np.abs(1 - np.abs(dot_product))
+      
+  eigvec_dot_mean = np.mean(dot_matrix, axis=1)
+  mean_relative_error = eigenvalues_mean - check_eigen
+  
+  return mean_relative_error, eigenvalues_std, eigvec_dot_mean, dot_matrix
+
+# ===========================================================================================================
+
+def plot_stability(omega, L, N, k, orders, num_runs):
+  fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+  # Initialize lists for data storage
+  eigenvalues_means = []
+  eigenvalues_stds = []
+  eigvec_dot_means = []
+  dot_matrices = []
+
+  # Run stability check for each order and collect results
+  for order in orders:
+    eigenvalues_mean, eigenvalues_std, eigvec_dot_mean, dot_matrix = check_stability(omega, L, N, k, order, num_runs)
+    eigenvalues_means.append(eigenvalues_mean)
+    eigenvalues_stds.append(eigenvalues_std)
+    eigvec_dot_means.append(eigvec_dot_mean)
+    dot_matrices.append(dot_matrix)
+
+  # Convert collected data into arrays for easier plotting
+  eigenvalues_means = np.array(eigenvalues_means)
+  eigenvalues_stds = np.array(eigenvalues_stds)
+  eigvec_dot_means = np.array(eigvec_dot_means)
+
+  # Top left: Mean of eigenvalues
+  ax = axes[0, 0]
+  sns.heatmap(eigenvalues_means, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
+  ax.set_title("Eigenvalues mean")
+  ax.set_xlabel("Eigenvalue index")
+  ax.set_ylabel("Order")
+
+  # Top right: Standard deviation of eigenvalues
+  ax = axes[0, 1]
+  sns.heatmap(eigenvalues_stds, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
+  ax.set_title("Eigenvalues standard deviation")
+  ax.set_xlabel("Eigenvalue index")
+  ax.set_ylabel("Order")
+
+  # Bottom left: Mean deviation of eigenvector dot products
+  ax = axes[1, 0]
+  sns.heatmap(eigvec_dot_means, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
+  ax.set_title("Eigenvectors dot mean deviation")
+  ax.set_xlabel("Eigenvector index")
+  ax.set_ylabel("Order")
+
+  # Bottom right: Heatmap of dot matrix for the last order
+  ax = axes[1, 1]
+  sns.heatmap(dot_matrices[-1], ax=ax, cmap="viridis", cbar_kws={'label': 'Deviation'})
+  ax.set_title(f"Eigenvector dot matrix (Order {orders[-1]})")
+  ax.set_xlabel("Run index")
+  ax.set_ylabel("Eigenvector index")
+
+  # Adjust layout and show plot
+  plt.tight_layout()
+  plt.show()
+
+# ===========================================================================================================
+
+def check_discretization(omega, L, k, orders, N_values):
+  # Initialize storage
+  eigenvalue_errors = np.zeros((len(N_values), len(orders), k))
+  eigenfunction_errors = np.zeros((len(N_values), len(orders), k))
+
+  # Loop over discretization steps and orders
+  for i, N in enumerate(N_values):
+    ev_errors = energy_difference(omega, L, N, k, orders)  # Shape: len(orders) x k
+    eigenvalue_errors[i, :, :] = ev_errors  # Store for current N and all orders
+
+    ef_errors = wfc_difference(omega, L, N, k, orders)  # Shape: len(orders) x k
+    eigenfunction_errors[i, :, :] = ef_errors  # Store for current N and all orders
+
+  return eigenvalue_errors, eigenfunction_errors
+
+# ===========================================================================================================
+
+def plot_discretization_heatmaps(omega, L, k, orders, N_values):
+  import seaborn as sns
+
+  # Compute dx values
+  dx_values = [2 * L / N for N in N_values]
+
+  # Get errors
+  eigenvalue_errors, eigenfunction_errors = check_discretization(omega, L, k, orders, N_values)
+
+  # Create subplots for heatmaps
+  fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+
+  # Prepare and plot eigenvalue errors (top row)
+  for i, order in enumerate(orders):
+    # Extract the data for the specific order
+    data = eigenvalue_errors[:, i, :]  # Shape: (N_values, k)
+
+    sns.heatmap(
+      data.T,  # Transpose to put dx on x-axis and k on y-axis
+      ax=axes[0, i],
+      xticklabels=np.round(dx_values, 3),
+      yticklabels=range(1, k + 1),  # k values
+      cmap="viridis",
+      annot=False,
+      cbar=True,
+      fmt=".2e"
+    )
+    axes[0, i].set_title(f"Eigenvalue Errors (Order {order})")
+    axes[0, i].set_xlabel("Discretization Step (dx)")
+    axes[0, i].set_ylabel("k (Eigenvalue Index)")
+
+  # Prepare and plot eigenfunction errors (bottom row)
+  for i, order in enumerate(orders):
+    # Extract the data for the specific order
+    data = eigenfunction_errors[:, i, :]  # Shape: (N_values, k)
+
+    sns.heatmap(
+      data.T,  # Transpose to put dx on x-axis and k on y-axis
+      ax=axes[1, i],
+      xticklabels=np.round(dx_values, 3),
+      yticklabels=range(1, k + 1),  # k values
+      cmap="plasma",
+      annot=False,
+      cbar=True,
+      fmt=".2e"
+    )
+    axes[1, i].set_title(f"Eigenfunction Errors (Order {order})")
+    axes[1, i].set_xlabel("Discretization Step (dx)")
+    axes[1, i].set_ylabel("k (Eigenfunction Index)")
+
+  # Adjust layout
+  plt.tight_layout()
+  plt.show()
+
+# ===========================================================================================================
