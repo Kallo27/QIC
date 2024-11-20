@@ -1,19 +1,56 @@
+###############################################
+## QUANTUM INFORMATION AND COMPUTING 2024/25 ##
+###############################################
+
+# Assignment 4 - QUANTUM HARMONIC OSCILLATOR
+
+
+# ===========================================================================================================
+# IMPORT ZONE
+# ===========================================================================================================
+
 import numpy as np
 import debugger as db
 import matplotlib.pyplot as plt
 import seaborn as sns
+import time
 
-from scipy.linalg import eigh, norm
-from itertools import cycle
+from scipy.linalg import eigh
 from scipy.special import factorial
+from scipy.stats import linregress
 
 
-def kinetic_matrix(K, N, dx, order):
+# ===========================================================================================================
+# FINITE DIFFERENCE METHOD
+# ===========================================================================================================
+
+def kinetic_matrix(L, N=1000, order=2):
+  """
+  kinetic_matrix: 
+    Computes the kinetic energy matrix for the finite difference method.
+
+  Parameters
+  ----------
+  L : float
+    Half-width of the spatial domain.
+  N : int, optional
+    Number of discretization points. Default is 1000.
+  order : int, optional
+    Order of the finite difference approximation (2, 4, 6, 8). Default is 2.
+
+  Returns
+  -------
+  K : np.ndarray
+    The kinetic energy matrix.
+  """
   # Constants
   hbar = 1.0  # Reduced Planck constant (set to 1 in atomic units)
   m = 1.0     # Mass of the particle (set to 1 in atomic units)
   
+  # Grid and factors
+  dx = 2 * L / N
   factor = hbar**2 / (m * dx**2)
+  K = np.zeros((N, N))
   
   if order == 2:
     K += np.diag(factor * np.ones(N))  # Main diagonal
@@ -36,14 +73,46 @@ def kinetic_matrix(K, N, dx, order):
     K += np.diag(-factor / 180 * np.ones(N-3), k=3)  # Third upper diagonal
     K += np.diag(-factor / 180 * np.ones(N-3), k=-3)  # Third lower diagonal
     
+  elif order == 8:
+    K += np.diag(205 * factor / 144 * np.ones(N))  # Main diagonal
+    K += np.diag(-4 * factor / 5 * np.ones(N-1), k=1)  # First upper diagonal
+    K += np.diag(-4 * factor / 5 * np.ones(N-1), k=-1)  # First lower diagonal
+    K += np.diag(1 * factor / 10 * np.ones(N-2), k=2)  # Second upper diagonal
+    K += np.diag(1 * factor / 10 * np.ones(N-2), k=-2)  # Second lower diagonal
+    K += np.diag(-4 * factor / 315 * np.ones(N-3), k=3)  # Third upper diagonal
+    K += np.diag(-4 * factor / 315 * np.ones(N-3), k=-3)  # Third lower diagonal
+    K += np.diag(factor / 1120 * np.ones(N-4), k=4)  # Fourth lower diagonal
+    K += np.diag(factor / 1120 * np.ones(N-4), k=-4)  # Fourth lower diagonal
+    
   else:
-    db.checkpoint(debug=True, msg1="APPROXIMATION ORDER", msg2="Unsupported order. Please choose order = 2, 4, or 6.", stop=True)
+    db.checkpoint(debug=True, msg1="APPROXIMATION ORDER", msg2="Unsupported order. Please choose order = 2, 4, 6 or 8.", stop=True)
   
   return K
 
 # ===========================================================================================================
 
 def hamiltonian(omega, L, N=1000, order=2):
+  """
+  hamiltonian: 
+    Constructs the Hamiltonian matrix for the harmonic oscillator
+    (using the finite difference numerical method).
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int, optional
+    Number of grid points. Default is 1000.
+  order : int, optional
+    Order of finite difference approximation. Default is 2.
+
+  Returns
+  -------
+  H : np.ndarray
+    The Hamiltonian matrix.
+  """
   # Constants
   m = 1.0 # Mass of the particle (set to 1 in atomic units)
   
@@ -52,12 +121,7 @@ def hamiltonian(omega, L, N=1000, order=2):
   x = np.linspace(-L, L, N) + dx / 2
 
   # Construct the Hamiltonian matrix
-  N = N
-  K = np.zeros((N, N))
-  V = np.zeros((N, N))
-  H = np.zeros((N, N))
-  
-  K = kinetic_matrix(K, N, dx, order)
+  K = kinetic_matrix(L, N, order)
   
   V_diag = 0.5 * m * omega**2 * x**2
   V = np.diag(V_diag)
@@ -68,20 +132,40 @@ def hamiltonian(omega, L, N=1000, order=2):
 # ===========================================================================================================
 
 def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
+  """
+  harmonic_oscillator_spectrum:
+    Computes the eigenvalues and eigenfunctions of the harmonic oscillator
+    (using the finite difference numerical method).
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int, optional
+    Number of grid points. Default is 1000.
+  order : int, optional
+    Order of finite difference approximation. Default is 2.
+
+  Returns
+  -------
+  energies, psi : tuple
+    Energies and normalized wavefunctions.
+  """
+  # Eigenvalues and eigenfunctions computation
   H = hamiltonian(omega, L, N, order)
   energies, psi = eigh(H)
   
-  for i in range(len(energies)):
-    psi[:, i] = psi[:, i] / norm(psi[:, i])
-    
-  center_index = N // 2  # assuming symmetric grid centered around x = 0
+  # Eigenfunctions flipping (for consistence with analytical solutions)
+  center_index = N // 2
 
   for i in range(len(psi)):
-    if i % 2 == 0:  # Even states
+    if i % 2 == 0:
       # Ensure the wavefunction is positive at the center
       if ((i//2)%2==0 and psi[:, i][center_index] < 0) or ((i//2)%2!=0 and psi[:, i][center_index] > 0):
         psi[:, i] *= -1
-    else :  # Odd states
+    else :
       # Find the first peak after the center
       for j in range(center_index, len(psi[:, i]) - 1):
         if abs(psi[:, i][j]) > abs(psi[:, i][j + 1]):  # First peak condition
@@ -92,35 +176,41 @@ def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
         psi[:, i] *= -1
       elif (i % 4 == 3 and psi[:, i][first_peak_index] > 0):  # Negative peaks
         psi[:, i] *= -1
-    
-  return energies, psi.T
+  
+  # Normalization and transposition
+  dx = 2 * L / N
+  psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0) * dx)  
+  return energies, psi
 
+
+# ===========================================================================================================
+# ANALYTICAL SOLUTION
 # ===========================================================================================================
 
 def hermite(x, n):
   """
   hermite:
-      Hermite polinomial of order 'n', 
-      defined over the real space grid 'x'.
+    Hermite polinomial of order 'n', 
+    defined over the real space grid 'x'.
 
   Parameters
   ----------
   x : np.ndarray
-      Real space grid.
+    Real space grid.
   n : int
-      Order of the polinomial.
+    Order of the polinomial.
 
   Returns
   -------
   herm_pol: np.ndarray
-            Hermite polinomial of order 'n'.
+    Hermite polinomial of order 'n'.
   """
   # Pre-condition: n>=0
-  if n<0:
+  if n < 0:
     db.checkpoint(debug=True, msg=f"The order of the Hermite polynomial is not valid (n={n}, expected n>=0)", stop=True)
 
   # Coefficients set to 0 except for the one of order n.
-  herm_coeffs = np.zeros(n+1)
+  herm_coeffs = np.zeros(n + 1)
   herm_coeffs[n] = 1
   
   # Actual computation of the polinomial over the space grid.
@@ -132,26 +222,25 @@ def hermite(x, n):
 def harmonic_en(omega=1.0, n=0):
   """
   harmonic_en:
-      Energy levels for an harwmonic potential.
+    Energy levels for an harmonic potential.
 
   Parameters
   ----------
   omega : float, optional
-          Angular frequency of the harmonic potential. By default 1.0.
+    Angular frequency of the harmonic potential. Default is 1.0.
   n : int, optional
-      Energy level. By default 0.
+    Energy level. Default is 0.
 
   Returns
   -------
   energy: float
-          Energy of level 'n'.
-      
+    Energy of level 'n'.
   """
   # Constants set to 1 in atomic units.
   hbar = 1.0
   
   # Pre-condition: n>=0
-  if n<0:
+  if n < 0:
     db.checkpoint(debug=True, msg=f"The order of the energy level is not valid (n={n}, expected n>=0)", stop=True)
     
   # Complete wavefunction.
@@ -160,71 +249,118 @@ def harmonic_en(omega=1.0, n=0):
 
 # ===========================================================================================================
 
-def harmonic_wfc(x, omega=1.0, n=0):
-    """
-    harmonic_wfc:
-        Wavefunction of order 'n' for a harmonic potential, 
-        defined over the real space grid 'x'.
-        
-        V(x) = 0.5 * m * omega * x**2
-        
-    Parameters
-    ----------
-    x : np.ndarray
-        Real space grid.
-    omega: float, optional
-           Angular frequency of the harmonic potential. By default 1.0.
-    n : int, optional
-        Order of the wavefunction. By default 0 (ground state).
-
-    Returns
-    -------
-    psi: np.ndarray
-         Normalized wavefunction of order 'n'.
-    """
-    # Constants set to 1 in atomic units.
-    hbar = 1.0
-    m = 1.0
-    
-    # Components of the analytical solution for stationary states.
-    prefactor = 1 / np.sqrt(2**n * factorial(n)) * ((m * omega) / (np.pi * hbar))**0.25
-    x_coeff = np.sqrt(m * omega / hbar)
-    exponential = np.exp(- (m * omega * x**2) / (2 * hbar))
-    
-    # Complete wavefunction.
-    psi = prefactor * exponential * hermite(x_coeff * x, n)
-    
-    # Normalization condition.
-    psi_normalized = psi / norm(psi)
-    
-    return psi_normalized
+def harmonic_wfc(omega, L, N, n=0):
+  """
+  harmonic_wfc:
+    Wavefunction of order 'n' for a harmonic potential, 
+    defined over the real space grid 'x'.
   
-# ===========================================================================================================
-# PLOTTING FUNCTIONS
-# ===========================================================================================================
+    V(x) = 0.5 * m * omega * x**2
+        
+  Parameters
+  ----------
+  omega: float, optional
+    Angular frequency of the harmonic potential.
+  L : float
+    Half-width of the spatial domain.
+  N : int, optional
+    Number of grid points. Default is 1000.
+  n : int, optional
+    Order of the wavefunction. By default 0 (ground state).
 
-def generate_colors(n):
-  base_colors = ['blue', 'green', 'grey', 'black', 'purple']
-  return [color for color, _ in zip(cycle(base_colors), range(n))]
-
-# ===========================================================================================================
-
-def plot_wf_en(omega, L, N, k, order=None):
+  Returns
+  -------
+  psi: np.ndarray
+    Normalized wavefunction of order 'n'.
+  """
+  # Constants set to 1 in atomic units.
+  hbar = 1.0
+  m = 1.0
+  
+  # Grid
   dx = 2 * L / N
   x = np.linspace(-L, L, N) + dx / 2
   
+  # Components of the analytical solution for stationary states.
+  prefactor = 1 / np.sqrt(2**n * factorial(n)) * ((m * omega) / (np.pi * hbar))**0.25
+  x_coeff = np.sqrt(m * omega / hbar)
+  exponential = np.exp(- (m * omega * x**2) / (2 * hbar))
+  
+  # Complete wavefunction.
+  psi = prefactor * exponential * hermite(x_coeff * x, n)
+  
+  # Normalization condition.
+  psi_normalized = psi / np.sqrt(np.sum(np.abs(psi)**2) * dx)
+  print()
+  return psi_normalized
+  
+
+# ===========================================================================================================
+# PLOTTING FUNCTIONS FOR ENERGY LEVELS AND WAVEFUNCTIONS
+# ===========================================================================================================
+
+def generate_colors(n):
+  """
+  generate_colors: 
+    Generates a colormap with n distinct colors.
+
+  Parameters
+  ----------
+  n : int
+    Number of distinct colors to generate.
+
+  Returns
+  -------
+  cmap : list of tuple
+    List of RGB tuples representing the generated colormap.
+  """
+  palette = sns.color_palette("husl", n)
+  cmap = [tuple(color) for color in palette]
+  return cmap
+
+# ===========================================================================================================
+
+def plot_wf_en(omega, L, N=1000, k=10, order=None):
+  """
+  plot_wf_en: 
+    Plots wavefunctions and energy levels of the quantum harmonic oscillator.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points. Default is 1000.
+  k : int
+    Number of energy levels and wavefunctions to plot. Default is 10
+  order : int, optional
+    Order of finite difference approximation (if None, uses analytical results).
+    Default is None.
+
+  Returns
+  -------
+  None
+  """
+  # Grid
+  dx = 2 * L / N
+  x = np.linspace(-L, L, N) + dx / 2
+  
+  # Compute energy levels and wavefunctions
   if order is not None:
     energies, wavefunctions = harmonic_oscillator_spectrum(omega, L, N, order)
   else:
     energies = [harmonic_en(omega, k) for k in range(0, k)]
-    wavefunctions = [harmonic_wfc(x, omega, k) for k in range(0, k)]
+    wavefunctions = [harmonic_wfc(omega, L, N, k) for k in range(0, k)]
 
-  fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
-
+  # Build subplots and generate cmap.
+  fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
   colors = generate_colors(k)
+  
   # Plot the wavefunctions in the first subplot
   for n in range(k):
-    ax1.plot(x, wavefunctions[n], label=f"$\psi(x)$ of order {n}", color=colors[n], linewidth=1.5)
+    ax1.plot(x, wavefunctions[n], label=f"$\psi(x)$ of order {n}", color=colors[n], linewidth=1)
   
   ax1.set_xlabel("Position $x$")
   ax1.set_ylabel("Amplitude")
@@ -243,42 +379,13 @@ def plot_wf_en(omega, L, N, k, order=None):
   ax2.grid(True, linestyle='--', alpha=0.7)
   ax2.legend(loc="upper left", bbox_to_anchor=(1.05, 1), borderaxespad=0.)
 
+  # Show
   fig.tight_layout()
   plt.show()
-  
-# ===========================================================================================================
 
-def energy_difference(omega, L, N, k, orders):  
-  differences = np.ndarray((len(orders), k))
-  an_en = [harmonic_en(omega, k) for k in range(0, k)]
-  
-  for i, order in enumerate(orders):
-    comp_en, _ = harmonic_oscillator_spectrum(omega, L, N, order)
-    
-    if len(comp_en) < k:
-      db.checkpoint(debug= True, msg1=f"Warning: Number of computed energies is less than {k}. Using available energies.", stop=False)
-      comp_en = np.pad(comp_en, (0, k - len(comp_en)), constant_values=np.nan)
-        
-    differences[i] = np.abs(comp_en[:k] - an_en) / comp_en[:k] # Compare the first k energies
-              
-  return differences
 
 # ===========================================================================================================
-
-def plot_energy_orders(omega, L, N, k, orders):
-  plt.figure(figsize=(8, 4))
-  
-  differences = energy_difference(omega, L, N, k, orders)
-
-  sns.heatmap(differences, cmap='viridis', xticklabels=[f"$E_{{{i}}}$" for i in range(k)], 
-              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy Difference'})
-  
-  plt.title("Energy difference for different eigenvalues at different orders")
-  plt.xlabel("Eigenvalue index")
-  plt.ylabel("Order")
-  plt.tight_layout()
-  plt.show()
-  
+# CORRECTNESS FUNCTIONS
 # ===========================================================================================================
 
 def check_schroedinger(omega, L, N, k, orders):
@@ -295,22 +402,23 @@ def check_schroedinger(omega, L, N, k, orders):
 
 # ===========================================================================================================
 
-def plot_schroedinger(omega, L, N, k, orders):
-  plt.figure(figsize=(8, 4))
+def energy_difference(omega, L, N, k, orders, rel=False):  
+  differences = np.ndarray((len(orders), k))
+  an_en = [harmonic_en(omega, k) for k in range(0, k)]
   
-  differences = check_schroedinger(omega, L, N, k, orders)
-
-  step = max(1, k // 10)  # Ensure at most 10 labels
-  xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
-
-  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
-              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
-  
-  plt.title("Schroedinger equation check for computational eigenstates")
-  plt.xlabel("Eigenstate index")
-  plt.ylabel("Order")
-  plt.tight_layout()
-  plt.show()
+  for i, order in enumerate(orders):
+    comp_en, _ = harmonic_oscillator_spectrum(omega, L, N, order)
+    
+    if len(comp_en) < k:
+      db.checkpoint(debug= True, msg1=f"Warning: Number of computed energies is less than {k}. Using available energies.", stop=False)
+      comp_en = np.pad(comp_en, (0, k - len(comp_en)), constant_values=np.nan)
+        
+    differences[i] = np.abs(comp_en[:k] - an_en)
+    
+    if rel:
+      differences[i] /= comp_en[:k]
+              
+  return differences
   
 # ===========================================================================================================
 
@@ -329,10 +437,45 @@ def wfc_difference(omega, L, N, k, orders):
       comp_wfc = np.vstack([comp_wfc, padding])
           
     for j in range(k):
-      an_wfc = harmonic_wfc(x, omega, j)
+      an_wfc = harmonic_wfc(omega, L, N, j)
       differences[i, j] = 1 - np.abs(np.dot(comp_wfc[j], an_wfc)) 
 
   return differences
+
+# ===========================================================================================================
+
+def plot_schroedinger(omega, L, N, k, orders):
+  plt.figure(figsize=(8, 4))
+  
+  differences = check_schroedinger(omega, L, N, k, orders)
+
+  step = max(1, k // 10)  # Ensure at most 10 labels
+  xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
+
+  sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
+  
+  plt.title("Schroedinger equation check for computational eigenstates")
+  plt.xlabel("Eigenstate index")
+  plt.ylabel("Order")
+  plt.tight_layout()
+  plt.show()
+
+# ===========================================================================================================
+
+def plot_energy_orders(omega, L, N, k, orders):
+  plt.figure(figsize=(8, 4))
+  
+  differences = energy_difference(omega, L, N, k, orders)
+
+  sns.heatmap(differences, cmap='cividis', xticklabels=[f"$E_{{{i}}}$" for i in range(k)], 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy Difference'})
+  
+  plt.title("Energy difference for different eigenvalues at different orders")
+  plt.xlabel("Eigenvalue index")
+  plt.ylabel("Order")
+  plt.tight_layout()
+  plt.show()
 
 # ===========================================================================================================
 
@@ -344,7 +487,7 @@ def plot_wfc_orders(omega, L, N, k, orders):
   step = max(1, k // 10)  # Ensure at most 10 labels
   xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
 
-  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
+  sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
               yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
   
   plt.title("Dot product between expected and computed eigenstates")
@@ -352,7 +495,43 @@ def plot_wfc_orders(omega, L, N, k, orders):
   plt.ylabel("Order")
   plt.tight_layout()
   plt.show()
-  
+
+# ===========================================================================================================
+
+def plot_loglog_fit(omega, L, N, k, order):
+
+  # Calculate energy differences for the given N and order
+  differences = energy_difference(omega, L, N, k, [order], rel=False).flatten()
+
+  # Generate eigenvalue indices
+  eigen_indices = np.arange(1, k + 1)
+
+  # Perform linear regression in log-log space
+  log_x = np.log(eigen_indices)
+  log_y = np.log(differences)
+  slope, intercept, r_value, _, _ = linregress(log_x, log_y)
+
+  # Predicted values from the fit
+  fitted_values = np.e ** (intercept + slope * log_x)
+
+  # Plot the data and the fit
+  plt.figure(figsize=(8, 6))
+  plt.loglog(eigen_indices, differences, marker='o', label=f"Order {order} (Data)")
+  plt.loglog(eigen_indices, fitted_values, linestyle='--', label=f"Fit: $y = e^{{{intercept:.2f}}} \cdot k^{{{slope:.2f}}}$")
+  plt.title(f"Energy Differences for Order {order} with Log-Log Fit")
+  plt.xlabel("Eigenvalue Index")
+  plt.ylabel("Relative Energy Difference")
+  plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+  plt.legend(loc="best")
+  plt.tight_layout()
+  plt.show()
+
+  # Print the slope and intercept
+  print(f"Log-Log Fit Parameters: Intercept = {intercept:.2f}, Slope = {slope:.2f}, R^2 = {r_value**2:.3f}")
+
+
+# ===========================================================================================================
+# STABILITY FUNCTIONS
 # ===========================================================================================================
 
 def check_stability(omega, L, N, k, order, num_runs):
@@ -440,6 +619,8 @@ def plot_stability(omega, L, N, k, orders, num_runs):
   plt.show()
 
 # ===========================================================================================================
+# DISCRETIZATION FUNCTIONS
+# ===========================================================================================================
 
 def check_discretization(omega, L, k, orders, N_values):
   # Initialize storage
@@ -480,7 +661,7 @@ def plot_discretization_heatmaps(omega, L, k, orders, N_values):
       ax=axes[0, i],
       xticklabels=np.round(dx_values, 3),
       yticklabels=range(1, k + 1),  # k values
-      cmap="viridis",
+      cmap="cividis",
       annot=False,
       cbar=True,
       fmt=".2e"
@@ -512,4 +693,47 @@ def plot_discretization_heatmaps(omega, L, k, orders, N_values):
   plt.tight_layout()
   plt.show()
 
+# ===========================================================================================================
+# EFFICIENCY FUNCTIONS
+# ===========================================================================================================
+
+def measure_efficiency(omega, L, orders, N_values, repetitions=1):
+  times = np.zeros((len(N_values), len(orders), repetitions))
+
+  for i, N in enumerate(N_values):
+    for j, order in enumerate(orders):
+      for r in range(repetitions):
+        start_time = time.perf_counter()
+                
+        harmonic_oscillator_spectrum(omega, L, N, order)
+                
+        end_time = time.perf_counter()
+                
+        times[i, j, r] = end_time - start_time
+
+  return times
+
+# ===========================================================================================================
+
+def plot_efficiency_heatmap(omega, L, orders, N_values, repetitions=1):
+  # Average times over repetitions if applicable
+  times = measure_efficiency(omega, L, orders,  N_values, repetitions)
+  
+  if repetitions > 1:
+      avg_times = np.mean(times, axis=2)
+  else:
+      avg_times = times[:, :, 0]
+  
+  # Convert grid sizes to dx values for better representation
+  dx_values = [2 * L / N for N in N_values]
+  
+  # Create the heatmap
+  plt.figure(figsize=(10, 6))
+  sns.heatmap(avg_times, xticklabels=orders, yticklabels=np.round(dx_values, 3), cmap="viridis", fmt=".2e", 
+              cbar_kws={"label": "Time (seconds)"})
+  plt.xlabel("Finite Difference Order")
+  plt.ylabel("Discretization Step (dx)")
+  plt.title("Computation Time Heatmap")
+  plt.show()
+  
 # ===========================================================================================================
