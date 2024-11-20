@@ -364,7 +364,7 @@ def plot_wf_en(omega, L, N=1000, k=10, order=None):
   
   ax1.set_xlabel("Position $x$")
   ax1.set_ylabel("Amplitude")
-  ax1.set_title("Wavefunctions of Quantum Harmonic Oscillator")
+  ax1.set_title("Wavefunctions of quantum harmonic oscillator")
   ax1.grid(True, linestyle='--', alpha=0.7)
   ax1.legend(loc="upper left", bbox_to_anchor=(1.05, 1), borderaxespad=0.)
 
@@ -375,7 +375,7 @@ def plot_wf_en(omega, L, N=1000, k=10, order=None):
    
   ax2.set_xlabel("Position $x$")
   ax2.set_ylabel("Energy")
-  ax2.set_title("Energy Levels and Harmonic Potential")
+  ax2.set_title("Energy levels and harmonic potential")
   ax2.grid(True, linestyle='--', alpha=0.7)
   ax2.legend(loc="upper left", bbox_to_anchor=(1.05, 1), borderaxespad=0.)
 
@@ -389,69 +389,174 @@ def plot_wf_en(omega, L, N=1000, k=10, order=None):
 # ===========================================================================================================
 
 def check_schroedinger(omega, L, N, k, orders):
+  """
+  check_schroedinger:
+    Checks how well the computed wavefunctions and energies satisfy
+    the Schrödinger equation for the harmonic oscillator.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenstates to check.
+  orders : list of int
+    List of finite difference orders to evaluate.
+
+  Returns
+  -------
+  diff : ndarray of shape (len(orders), k)
+    Differences between computed and expected results for each order and eigenstate.
+  """
+  # Initialize 'diff'
   diff = np.ndarray((len(orders), k))
+  dx = 2 * L / N
+  
+  # Loop through the orders
   for i, order in enumerate(orders):
+    # Build Hamiltonian and compute energy levels and eigenfunctions 
     H = hamiltonian(omega, L, N, order)
     energies, psi = harmonic_oscillator_spectrum(omega, L, N, order)
-      
+    
+    # Compute difference between energy and expected value
     for j in range(k):
-      lhs = np.dot(psi[j], np.dot(H, psi[j]))
+      lhs = np.vdot(psi[j], np.dot(H, psi[j])) * dx
       diff[i, j] = np.abs(lhs - energies[j])   
     
   return diff
 
 # ===========================================================================================================
 
-def energy_difference(omega, L, N, k, orders, rel=False):  
+def energy_difference(omega, L, N, k, orders, rel=True):
+  """
+  energy_difference:
+    C the absolute or relative differences between analytical
+    and computed eigenvalues for the harmonic oscillator.
+
+  Parameters
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  rel : bool, optional
+    If True, compute relative differences. Default is True.
+
+  Returns
+  -------
+  differences : ndarray of shape (len(orders), k)
+    Energy differences for each order and eigenvalue.
+  """
+  # Initialize 'differences'
   differences = np.ndarray((len(orders), k))
+  
+  # Compute expected energies
   an_en = [harmonic_en(omega, k) for k in range(0, k)]
   
+  # Loop through the orders
   for i, order in enumerate(orders):
+    # Compute numerical energies
     comp_en, _ = harmonic_oscillator_spectrum(omega, L, N, order)
     
+    # WARNING: if k is higher than the available energies, pad energies with 'np.nan'.
     if len(comp_en) < k:
       db.checkpoint(debug= True, msg1=f"Warning: Number of computed energies is less than {k}. Using available energies.", stop=False)
       comp_en = np.pad(comp_en, (0, k - len(comp_en)), constant_values=np.nan)
-        
-    differences[i] = np.abs(comp_en[:k] - an_en)
     
+    # Compute absolute difference (and if rel is True, relative)    
+    differences[i] = np.abs(comp_en[:k] - an_en)
     if rel:
       differences[i] /= comp_en[:k]
-              
   return differences
   
 # ===========================================================================================================
 
 def wfc_difference(omega, L, N, k, orders):
+  """
+  wfc_difference:
+    Computes the differences between analytical and computed eigenstates
+    for the harmonic oscillator using the dot product.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenstates to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+
+  Returns
+  -------
+  differences : ndarray of shape (len(orders), k)
+    Differences between analytical and computed wavefunctions for each order.
+  """
+  # Grid
   dx = 2 * L / N
   x = np.linspace(-L, L, N) + dx / 2
   
+  # Initialize 'difference'
   differences = np.zeros((len(orders), k))
   
+  # Loop through the orders
   for i, order in enumerate(orders):
     _, comp_wfc = harmonic_oscillator_spectrum(omega, L, N, order)
     
-    if comp_wfc.shape[0] < k:  # Check if fewer eigenstates are computed
+    # WARNING: if k is higher than the available energies, pad energies with zeros.
+    if comp_wfc.shape[0] < k:
       db.checkpoint(debug=True, msg1=f"Warning: Number of computed eigenstates is less than {k}. Using available eigenstates.", stop=False)
-      padding = np.zeros((k - comp_wfc.shape[0], N))  # Pad with zeros
+      padding = np.zeros((k - comp_wfc.shape[0], N))
       comp_wfc = np.vstack([comp_wfc, padding])
-          
+    
+    # Compute 1 - |dot product|
     for j in range(k):
       an_wfc = harmonic_wfc(omega, L, N, j)
-      differences[i, j] = 1 - np.abs(np.dot(comp_wfc[j], an_wfc)) 
-
+      differences[i, j] = 1 - np.abs((np.dot(comp_wfc[j], an_wfc)) * dx) 
   return differences
 
 # ===========================================================================================================
 
 def plot_schroedinger(omega, L, N, k, orders):
+  """
+  plot_schroedinger:
+    Generates a heatmap of the differences in how well computed
+    wavefunctions and energies satisfy the Schrödinger equation.
+
+  Parameters
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+
+  Returns
+  -------
+  None
+  """
   plt.figure(figsize=(8, 4))
   
   differences = check_schroedinger(omega, L, N, k, orders)
 
   step = max(1, k // 10)  # Ensure at most 10 labels
   xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
-
   sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
               yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
   
@@ -464,12 +569,39 @@ def plot_schroedinger(omega, L, N, k, orders):
 # ===========================================================================================================
 
 def plot_energy_orders(omega, L, N, k, orders):
+  """
+  plot_energy_orders:
+    Generates a heatmap of energy differences between analytical
+    and computed eigenvalues for different orders.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  rel : bool, optional
+    If True, compute relative differences. Default is False.
+
+  Returns
+  -------
+  differences : ndarray of shape (len(orders), k)
+    Energy differences for each order and eigenvalue.
+  """
   plt.figure(figsize=(8, 4))
   
   differences = energy_difference(omega, L, N, k, orders)
-
-  sns.heatmap(differences, cmap='cividis', xticklabels=[f"$E_{{{i}}}$" for i in range(k)], 
-              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy Difference'})
+  
+  step = max(1, k // 10)  # Ensure at most 10 labels
+  xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
+  sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
+              yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy difference'})
   
   plt.title("Energy difference for different eigenvalues at different orders")
   plt.xlabel("Eigenvalue index")
@@ -480,13 +612,34 @@ def plot_energy_orders(omega, L, N, k, orders):
 # ===========================================================================================================
 
 def plot_wfc_orders(omega, L, N, k, orders):
+  """
+  plot_wfc_orders:
+    Generates a heatmap of differences between analytical and computed
+    eigenstates for different orders of finite differences.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+
+  Returns
+  -------
+  None
+  """
   plt.figure(figsize=(8, 4))
   
   differences = wfc_difference(omega, L, N, k, orders)
 
   step = max(1, k // 10)  # Ensure at most 10 labels
   xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
-
   sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
               yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
   
@@ -499,7 +652,28 @@ def plot_wfc_orders(omega, L, N, k, orders):
 # ===========================================================================================================
 
 def plot_loglog_fit(omega, L, N, k, order):
+  """
+  plot_loglog_fit:
+    Performs a log-log regression on the energy differences for a
+    specific order and plots the data with the regression fit.
 
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  order : int
+    Finite difference order to evaluate.
+
+  Returns
+  -------
+  None
+  """
   # Calculate energy differences for the given N and order
   differences = energy_difference(omega, L, N, k, [order], rel=False).flatten()
 
@@ -516,18 +690,18 @@ def plot_loglog_fit(omega, L, N, k, order):
 
   # Plot the data and the fit
   plt.figure(figsize=(8, 6))
-  plt.loglog(eigen_indices, differences, marker='o', label=f"Order {order} (Data)")
-  plt.loglog(eigen_indices, fitted_values, linestyle='--', label=f"Fit: $y = e^{{{intercept:.2f}}} \cdot k^{{{slope:.2f}}}$")
-  plt.title(f"Energy Differences for Order {order} with Log-Log Fit")
-  plt.xlabel("Eigenvalue Index")
-  plt.ylabel("Relative Energy Difference")
+  plt.loglog(eigen_indices, differences, marker='o', label=f"Order {order}")
+  plt.loglog(eigen_indices, fitted_values, linestyle='--', label=f"Fit: $y \propto k^{{{slope:.2f}}}$")
+  plt.title(f"Energy differences for order {order} in log-log scale")
+  plt.xlabel("Eigenvalue index")
+  plt.ylabel("Energy difference")
   plt.grid(True, which="both", linestyle="--", linewidth=0.5)
   plt.legend(loc="best")
   plt.tight_layout()
   plt.show()
 
   # Print the slope and intercept
-  print(f"Log-Log Fit Parameters: Intercept = {intercept:.2f}, Slope = {slope:.2f}, R^2 = {r_value**2:.3f}")
+  print(f"Fit parameters:\nIntercept = {intercept:.2f}, Slope = {slope:.2f}, $R^2$ = {r_value**2:.3f}")
 
 
 # ===========================================================================================================
