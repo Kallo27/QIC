@@ -150,7 +150,7 @@ def harmonic_oscillator_spectrum(omega, L, N=1000, order=2):
 
   Returns
   -------
-  energies, psi : tuple
+  energies, psi : tuple of np.ndarray
     Energies and normalized wavefunctions.
   """
   # Eigenvalues and eigenfunctions computation
@@ -409,7 +409,7 @@ def check_schroedinger(omega, L, N, k, orders):
 
   Returns
   -------
-  diff : ndarray of shape (len(orders), k)
+  diff : np.ndarray of shape (len(orders), k)
     Differences between computed and expected results for each order and eigenstate.
   """
   # Initialize 'diff'
@@ -453,7 +453,7 @@ def energy_difference(omega, L, N, k, orders, rel=True):
 
   Returns
   -------
-  differences : ndarray of shape (len(orders), k)
+  differences : np.ndarray of shape (len(orders), k)
     Energy differences for each order and eigenvalue.
   """
   # Initialize 'differences'
@@ -501,7 +501,7 @@ def wfc_difference(omega, L, N, k, orders):
 
   Returns
   -------
-  differences : ndarray of shape (len(orders), k)
+  differences : np.ndarray of shape (len(orders), k)
     Differences between analytical and computed wavefunctions for each order.
   """
   # Grid
@@ -591,7 +591,7 @@ def plot_energy_orders(omega, L, N, k, orders):
 
   Returns
   -------
-  differences : ndarray of shape (len(orders), k)
+  differences : np.ndarray of shape (len(orders), k)
     Energy differences for each order and eigenvalue.
   """
   plt.figure(figsize=(8, 4))
@@ -600,7 +600,7 @@ def plot_energy_orders(omega, L, N, k, orders):
   
   step = max(1, k // 10)  # Ensure at most 10 labels
   xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
-  sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
+  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
               yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Relative energy difference'})
   
   plt.title("Energy difference for different eigenvalues at different orders")
@@ -640,7 +640,7 @@ def plot_wfc_orders(omega, L, N, k, orders):
 
   step = max(1, k // 10)  # Ensure at most 10 labels
   xtickslab = [f"$E_{{{i}}}$" if i % step == 0 else "" for i in range(k)]
-  sns.heatmap(differences, cmap='cividis', xticklabels=xtickslab, 
+  sns.heatmap(differences, cmap='viridis', xticklabels=xtickslab, 
               yticklabels=[f"Order {order}" for order in orders], cbar_kws={'label': 'Difference (expected 0)'})
   
   plt.title("Dot product between expected and computed eigenstates")
@@ -709,36 +709,90 @@ def plot_loglog_fit(omega, L, N, k, order):
 # ===========================================================================================================
 
 def check_stability(omega, L, N, k, order, num_runs):
+  """
+  check_stability:
+    Check the stability of the finite difference solution for the quantum harmonic oscillator.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  order : int
+    Finite difference order to evaluate.
+  num_runs : int
+    Number of runs to calculate stability metrics.
+
+  Returns
+  -------
+  eigenvalues_mean, eigenvalues_std, eigvec_dot_mean, dot_matrix : tuple of np.ndarray
+    Mean and standard deviation of eigenvalues across runs; Mean deviations in 
+    the dot product of eigenvectors and matrix of deviations in the dot product 
+    of eigenvectors between consecutive runs.
+  """
+  # Initialize lists for data storage
   eigenvals_runs = []
   eigenvecs_runs = []
   
   for _ in range(num_runs):
-    eigenvalues, eigenvectors = harmonic_oscillator_spectrum(omega, L, N, order)  # Adjust parameters as needed
-    eigenvals_runs.append(eigenvalues[:k])          # Store the first k eigenvalues
+    eigenvalues, eigenvectors = harmonic_oscillator_spectrum(omega, L, N, order)
+    eigenvals_runs.append(eigenvalues[:k])      # Store the first k eigenvalues
     eigenvecs_runs.append(eigenvectors[:k])     # Store the first k eigenvectors
   
   eigenvals_runs = np.array(eigenvals_runs)
   eigenvecs_runs = np.array(eigenvecs_runs)
   
+  # Eigenvalue for reference
   check_eigen = eigenvals_runs[-1]
   
+  # Compute mean and std
   eigenvalues_mean = np.mean(eigenvals_runs, axis=0)
   eigenvalues_std = np.std(eigenvals_runs, axis=0)
-  dot_matrix = np.zeros((k, num_runs - 1))
   
+  # Grid and dot matrix initialization
+  dx = 2 * L / N
+  dot_matrix = np.zeros((k, num_runs - 1))
+    
   for i in range(k):
     for j in range(1, num_runs):
-      dot_product = np.dot(eigenvecs_runs[j, i, :], eigenvecs_runs[j - 1, i, :])
+      dot_product = np.dot(eigenvecs_runs[j, i, :], eigenvecs_runs[j - 1, i, :]) * dx
       dot_matrix[i, j - 1] = np.abs(1 - np.abs(dot_product))
       
   eigvec_dot_mean = np.mean(dot_matrix, axis=1)
-  mean_relative_error = eigenvalues_mean - check_eigen
   
-  return mean_relative_error, eigenvalues_std, eigvec_dot_mean, dot_matrix
+  return eigenvalues_mean, eigenvalues_std, eigvec_dot_mean, dot_matrix
 
 # ===========================================================================================================
 
 def plot_stability(omega, L, N, k, orders, num_runs):
+  """
+  plot_stability:
+    Plot the stability of eigenvalues and eigenvectors for different finite difference orders.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  N : int
+    Number of grid points.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  num_runs : int
+    Number of runs to calculate stability metrics.
+
+  Returns
+  -------
+  None
+  """
   fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
   # Initialize lists for data storage
@@ -755,115 +809,149 @@ def plot_stability(omega, L, N, k, orders, num_runs):
     eigvec_dot_means.append(eigvec_dot_mean)
     dot_matrices.append(dot_matrix)
 
-  # Convert collected data into arrays for easier plotting
   eigenvalues_means = np.array(eigenvalues_means)
   eigenvalues_stds = np.array(eigenvalues_stds)
   eigvec_dot_means = np.array(eigvec_dot_means)
 
-  # Top left: Mean of eigenvalues
+  # Top left: mean of eigenvalues
   ax = axes[0, 0]
   sns.heatmap(eigenvalues_means, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
   ax.set_title("Eigenvalues mean")
   ax.set_xlabel("Eigenvalue index")
   ax.set_ylabel("Order")
 
-  # Top right: Standard deviation of eigenvalues
+  # Top right: standard deviation of eigenvalues
   ax = axes[0, 1]
   sns.heatmap(eigenvalues_stds, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
   ax.set_title("Eigenvalues standard deviation")
   ax.set_xlabel("Eigenvalue index")
   ax.set_ylabel("Order")
 
-  # Bottom left: Mean deviation of eigenvector dot products
+  # Bottom left: mean deviation of eigenvector dot products
   ax = axes[1, 0]
   sns.heatmap(eigvec_dot_means, fmt=".3f", ax=ax, cmap="viridis", xticklabels=range(k), yticklabels=orders)
   ax.set_title("Eigenvectors dot mean deviation")
   ax.set_xlabel("Eigenvector index")
   ax.set_ylabel("Order")
-
-  # Bottom right: Heatmap of dot matrix for the last order
+  
+  # Bottom right: heatmap of dot matrix for the last order
   ax = axes[1, 1]
-  sns.heatmap(dot_matrices[-1], ax=ax, cmap="viridis", cbar_kws={'label': 'Deviation'})
+  sns.heatmap(dot_matrices[-1], ax=ax, cmap="viridis")
   ax.set_title(f"Eigenvector dot matrix (Order {orders[-1]})")
   ax.set_xlabel("Run index")
   ax.set_ylabel("Eigenvector index")
 
-  # Adjust layout and show plot
+  # Show
   plt.tight_layout()
   plt.show()
+
 
 # ===========================================================================================================
 # DISCRETIZATION FUNCTIONS
 # ===========================================================================================================
 
 def check_discretization(omega, L, k, orders, N_values):
+  """
+  check_discretization:
+    Check discretization errors in the eigenvalues and eigenfunctions.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  N_values : list of int
+    List of numbers of grid points.
+
+  Returns
+  -------
+  eigenvalue_errors, eigenfunction_errors : tuple of np.ndarray
+    Relative errors of eigenvalues and eigenfunctions dot product for different 
+    discretization steps and orders
+  """
+
   # Initialize storage
   eigenvalue_errors = np.zeros((len(N_values), len(orders), k))
   eigenfunction_errors = np.zeros((len(N_values), len(orders), k))
 
-  # Loop over discretization steps and orders
+  # Loop over discretization steps
   for i, N in enumerate(N_values):
-    ev_errors = energy_difference(omega, L, N, k, orders)  # Shape: len(orders) x k
-    eigenvalue_errors[i, :, :] = ev_errors  # Store for current N and all orders
+    ev_errors = energy_difference(omega, L, N, k, orders)
+    eigenvalue_errors[i, :, :] = ev_errors
 
-    ef_errors = wfc_difference(omega, L, N, k, orders)  # Shape: len(orders) x k
-    eigenfunction_errors[i, :, :] = ef_errors  # Store for current N and all orders
+    ef_errors = wfc_difference(omega, L, N, k, orders)
+    eigenfunction_errors[i, :, :] = ef_errors
 
   return eigenvalue_errors, eigenfunction_errors
 
 # ===========================================================================================================
 
 def plot_discretization_heatmaps(omega, L, k, orders, N_values):
-  import seaborn as sns
+  """
+  plot_discretization_heatmaps:
+    Plot heatmaps of discretization errors in eigenvalues and eigenfunctions.
 
-  # Compute dx values
-  dx_values = [2 * L / N for N in N_values]
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  k : int
+    Number of eigenvalues to compare.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  N_values : list of int
+    List of numbers of grid points.
 
+  Returns
+  -------
+  None
+  """
   # Get errors
   eigenvalue_errors, eigenfunction_errors = check_discretization(omega, L, k, orders, N_values)
 
-  # Create subplots for heatmaps
-  fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+  fig, axes = plt.subplots(4, 2, figsize=(16, 20))
+  
+  # Convert grid sizes to dx values for better representation
+  dx_values = [2 * L / N for N in N_values]
 
-  # Prepare and plot eigenvalue errors (top row)
+  # Plot eigenvalue errors (left column)
   for i, order in enumerate(orders):
-    # Extract the data for the specific order
-    data = eigenvalue_errors[:, i, :]  # Shape: (N_values, k)
+    data = eigenvalue_errors[:, i, :]
 
     sns.heatmap(
       data.T,  # Transpose to put dx on x-axis and k on y-axis
-      ax=axes[0, i],
+      ax=axes[i, 0],  # Left column
       xticklabels=np.round(dx_values, 3),
-      yticklabels=range(1, k + 1),  # k values
-      cmap="cividis",
-      annot=False,
-      cbar=True,
-      fmt=".2e"
+      yticklabels=range(1, k + 1),
+      cmap="cividis", cbar=True, fmt=".2e"
     )
-    axes[0, i].set_title(f"Eigenvalue Errors (Order {order})")
-    axes[0, i].set_xlabel("Discretization Step (dx)")
-    axes[0, i].set_ylabel("k (Eigenvalue Index)")
+    axes[i, 0].set_title(f"Eigenvalue relative error (Order {order})")
+    axes[i, 0].set_xlabel("Discretization step (dx)")
+    axes[i, 0].set_ylabel("Eigenvalue index")
 
-  # Prepare and plot eigenfunction errors (bottom row)
+  # Plot eigenfunction errors (right column)
   for i, order in enumerate(orders):
-    # Extract the data for the specific order
-    data = eigenfunction_errors[:, i, :]  # Shape: (N_values, k)
+    data = eigenfunction_errors[:, i, :]
 
     sns.heatmap(
       data.T,  # Transpose to put dx on x-axis and k on y-axis
-      ax=axes[1, i],
+      ax=axes[i, 1],  # Right column
       xticklabels=np.round(dx_values, 3),
-      yticklabels=range(1, k + 1),  # k values
-      cmap="plasma",
-      annot=False,
-      cbar=True,
-      fmt=".2e"
+      yticklabels=range(1, k + 1),
+      cmap="plasma", cbar=True, fmt=".2e"
     )
-    axes[1, i].set_title(f"Eigenfunction Errors (Order {order})")
-    axes[1, i].set_xlabel("Discretization Step (dx)")
-    axes[1, i].set_ylabel("k (Eigenfunction Index)")
+    axes[i, 1].set_title(f"Eigenvalue relative error (Order {order})")
+    axes[i, 1].set_xlabel("Discretization step (dx)")
+    axes[i, 1].set_ylabel("Eigenvalue index")
 
-  # Adjust layout
+  # Show
   plt.tight_layout()
   plt.show()
 
@@ -872,17 +960,41 @@ def plot_discretization_heatmaps(omega, L, k, orders, N_values):
 # ===========================================================================================================
 
 def measure_efficiency(omega, L, orders, N_values, repetitions=1):
+  """
+  measure_efficiency:
+    Measure the computational time for solving the quantum harmonic oscillator.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  N_values : list of int
+    List of numbers of grid points.
+  repetitions : int, optional
+    Number of repetitions for timing measurements, by default 1.
+
+  Returns
+  -------
+  times : np.ndarray
+    Computation times for different grid points and orders over repetitions.
+  """
+  # Initialize 'times' with the correct dimensions
   times = np.zeros((len(N_values), len(orders), repetitions))
 
+  # Loop over N_values, orders and repetitions
   for i, N in enumerate(N_values):
     for j, order in enumerate(orders):
       for r in range(repetitions):
+        # We use 'time.perf_counter() as it is the best available short-period clock
         start_time = time.perf_counter()
-                
         harmonic_oscillator_spectrum(omega, L, N, order)
-                
         end_time = time.perf_counter()
-                
+
+        # Save in the correct slot
         times[i, j, r] = end_time - start_time
 
   return times
@@ -890,9 +1002,31 @@ def measure_efficiency(omega, L, orders, N_values, repetitions=1):
 # ===========================================================================================================
 
 def plot_efficiency_heatmap(omega, L, orders, N_values, repetitions=1):
-  # Average times over repetitions if applicable
+  """
+  plot_efficiency_heatmap:
+    Plot a heatmap of computational times for different grid resolutions and finite difference orders.
+
+  Parameters
+  ----------
+  omega : float
+    Angular frequency of the harmonic oscillator.
+  L : float
+    Half-width of the spatial domain.
+  orders : list of int
+    List of finite difference orders to evaluate.
+  N_values : list of int
+    List of numbers of grid points.
+  repetitions : int, optional
+    Number of repetitions for timing measurements, by default 1.
+
+  Returns
+  -------
+  None
+  """
+  # Compute benchmarking
   times = measure_efficiency(omega, L, orders,  N_values, repetitions)
   
+  # If possible, average over repetitions
   if repetitions > 1:
       avg_times = np.mean(times, axis=2)
   else:
@@ -901,13 +1035,13 @@ def plot_efficiency_heatmap(omega, L, orders, N_values, repetitions=1):
   # Convert grid sizes to dx values for better representation
   dx_values = [2 * L / N for N in N_values]
   
-  # Create the heatmap
   plt.figure(figsize=(10, 6))
-  sns.heatmap(avg_times, xticklabels=orders, yticklabels=np.round(dx_values, 3), cmap="viridis", fmt=".2e", 
+  sns.heatmap(avg_times, xticklabels=orders, yticklabels=np.round(dx_values, 3), cmap="cividis", fmt=".2e", 
               cbar_kws={"label": "Time (seconds)"})
-  plt.xlabel("Finite Difference Order")
-  plt.ylabel("Discretization Step (dx)")
-  plt.title("Computation Time Heatmap")
+  
+  plt.xlabel("Finite difference order")
+  plt.ylabel("Discretization step (dx)")
+  plt.title("Computation time heatmap")
   plt.show()
   
 # ===========================================================================================================
