@@ -947,9 +947,9 @@ def plot_discretization_heatmaps(omega, L, k, orders, N_values):
       yticklabels=range(1, k + 1),
       cmap="plasma", cbar=True, fmt=".2e"
     )
-    axes[i, 1].set_title(f"Eigenvalue relative error (Order {order})")
+    axes[i, 1].set_title(f"Eigenvectors dot mean deviation (Order {order})")
     axes[i, 1].set_xlabel("Discretization step (dx)")
-    axes[i, 1].set_ylabel("Eigenvalue index")
+    axes[i, 1].set_ylabel("Eigenvector index")
 
   # Show
   plt.tight_layout()
