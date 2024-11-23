@@ -291,7 +291,6 @@ def harmonic_wfc(omega, L, N, n=0):
   
   # Normalization condition.
   psi_normalized = psi / np.sqrt(np.sum(np.abs(psi)**2) * dx)
-  print()
   return psi_normalized
   
 
