@@ -268,11 +268,13 @@ def split_op(par: Param, opr: Operators) -> None:
     density = np.abs(opr.wfc) ** 2
 
     # Renormalization
-    renorm_factor = np.sum(density * par.dx)
-    if renorm_factor != 0.0:
-      opr.wfc /= np.sqrt(renorm_factor)
-    else:
-      db.checkpoint(debug=True, msg1=f"RENORMALIZATION WARNING! Renorm factor too small at timestep {i}: {renorm_factor}", stop=False)
+    if par.im_time:
+      renorm_factor = np.sum(density * par.dx)
+      if renorm_factor != 0.0:
+        opr.wfc /= np.sqrt(renorm_factor)
+        density = np.abs(opr.wfc) ** 2
+      else:
+        db.checkpoint(debug=True, msg1=f"RENORMALIZATION WARNING! Renorm factor too small at timestep {i}: {renorm_factor}", stop=False)
 
     # Saves exactly 100 snapshots
     if i % (par.num_t // 100) == 0 and jj < 100:
@@ -357,9 +359,9 @@ def gif_animation(par, density, potential, avg_position, filename='qho_time_evol
   # Lines for the wave function, potential, and average position
   line_wfc, = ax.plot([], [], lw=1.5, label="|ψ(x)|^2", color='blue')
   line_pot, = ax.plot([], [], lw=1.5, label="V(x)", color='gray', linestyle='--')
-  line_avg_pos, = ax.plot([], [], lw=1, label="Average Position", color='red', linestyle='-.')
+  line_avg_pos, = ax.plot([], [], lw=1, label="Average position", color='red', linestyle='-.')
 
-  ax.legend()
+  ax.legend(loc="upper left")
 
   # Initialization function for the animation
   def init_line():
