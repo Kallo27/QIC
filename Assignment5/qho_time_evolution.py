@@ -330,9 +330,9 @@ def plot_average_position(par, avg_position):
   
 # ===========================================================================================================
 
-def gif_animation(par, density, potential, avg_position, filename='qho_time_evolution.gif'):
+def gif_real_animation(par, density, potential, avg_position, filename='qho_time_evolution.gif'):
   """
-  gif_animation:
+  gif_real_animation:
     Creates an animated GIF showing the wave function, potential, and average position
     at each timestep.
 
@@ -401,5 +401,63 @@ def gif_animation(par, density, potential, avg_position, filename='qho_time_evol
   # Close the figure to prevent it from displaying in the notebook
   plt.close(fig)
     
+  # Final print statement
+  print(f"Animation saved as '{filename}'")
+  
+  
+def gif_momentum_animation(par, density, filename='momentum_space.gif'):
+  """
+  gif_momentum_animation:
+    Creates an animated GIF showing the wave function in momentum space at each timestep.
+
+  Parameters
+  ----------
+  par : Param
+    Parameters of the simulation (contains momentum grid, etc.).
+  density : numpy.ndarray
+    Array containing the wave function density in both real and momentum space
+    at each timestep.
+  filename : str, optional
+    Name of the output GIF file. Default is 'momentum_space.gif'.
+  """
+  # Set up the figure and axis for the momentum space animation
+  fig, ax = plt.subplots()
+  ax.set_xlim(-10, 10)  # Set the x-axis limit for momentum space
+  ax.set_ylim(density[:, par.num_x:2 * par.num_x].min(), density[:, par.num_x:2 * par.num_x].max())  # Dynamic y-axis limit
+  ax.set_xlabel("Momentum (k)")
+  ax.set_ylabel("Amplitude |ψ(k)|^2")
+
+  # Initialize the line for momentum space
+  line, = ax.plot([], [], lw=1.5, label="|ψ(k)|^2", color='blue')
+  ax.legend()
+
+  def init_line():
+    """
+    init_line:
+      Initialization function for the animation.
+    """
+    line.set_data([], [])
+    return line,
+
+  def animate(i):
+    """
+    animate:
+      Animation function to update the plot at each frame.
+    """
+    # Extract momentum space density and sort for proper plotting
+    x = par.k
+    y = density[i, par.num_x:2 * par.num_x]
+    order = np.argsort(x)  # Sort momentum values
+    line.set_data(x[order], y[order])
+    return line,
+
+  # Create the animation and save as a GIF
+  anim = animation.FuncAnimation(fig, animate, init_func=init_line, frames=100, interval=20, blit=True)
+  writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+  anim.save(filename, writer=writer)
+
+  # Close the figure to prevent it from displaying in the notebook
+  plt.close(fig)
+
   # Final print statement
   print(f"Animation saved as '{filename}'")
