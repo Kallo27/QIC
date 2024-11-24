@@ -1,3 +1,14 @@
+###############################################
+## QUANTUM INFORMATION AND COMPUTING 2024/25 ##
+###############################################
+
+# Assignment 5 - TIME-DEPENDENT SCHROEDINGER EQUATION
+
+
+# ===========================================================================================================
+# IMPORT ZONE
+# ===========================================================================================================
+
 import numpy as np
 import matplotlib.pyplot as plt
 import debugger as db
@@ -5,6 +16,10 @@ import auxiliary_functions as aux
 
 from matplotlib import animation
 
+
+# ===========================================================================================================
+# PARAM CLASS
+# ===========================================================================================================
 
 class Param:
   """
@@ -69,6 +84,9 @@ class Param:
     if self.x_max <= 0 or self.tsim <= 0:
       db.checkpoint(debug=True, msg1="INITIALIZATION", msg2="ValueError: xmax and tsim must be positive values.", stop=True)
       
+      
+# ===========================================================================================================
+# OPERATORS CLASS
 # ===========================================================================================================
 
 class Operators:
@@ -98,9 +116,9 @@ class Operators:
     wfcoffset : float, optional
       Offset of the wavefunction in real space. Default is 0.
     omega : float
-      Angular frequency of the harmonic oscillator.
+      Angular frequency of the harmonic oscillator. Default is 1.0.
     order : int
-      Order of the finite difference approximation
+      Order of the finite difference approximation. Default is 2.
     n : int, optional
       Order of the Hermite polynomial. Default is 0.
     q0_func : callable, optional
@@ -176,7 +194,7 @@ class Operators:
     Parameters
     ----------
     par : Param
-      Parameters of the simulation
+      Parameters of the simulation.
 
     Returns
     -------
@@ -207,16 +225,18 @@ def split_op(par: Param, opr: Operators) -> None:
   Parameters
   ----------
   par : Param
-    Parameters of the simulation
+    Parameters of the simulation.
   opr : Operators
-    Operators of the simulation
+    Operators of the simulation.
 
   Returns
   -------
-  None
+  densities, potential, avg_position: tuple of np.ndarray
+    Densities, potential and average position arrays, each with 100
+    elements for visualization purposes.
   """
   # Initialize storage
-  results = np.zeros((100, 2 * par.num_x)) # 1st half -> wfc in real space; 2nd half -> wfc in momentum space
+  densities = np.zeros((100, 2 * par.num_x)) # 1st half -> wfc in real space; 2nd half -> wfc in momentum space
   potential = np.zeros((100, par.num_x))
   avg_position = np.zeros(100)
   
@@ -257,8 +277,8 @@ def split_op(par: Param, opr: Operators) -> None:
     # Saves exactly 100 snapshots
     if i % (par.num_t // 100) == 0 and jj < 100:
       # Save wfc in real and momentum space
-      results[jj, 0:par.num_x] = np.real(density)
-      results[jj, par.num_x:2 * par.num_x] = np.abs(np.fft.fft(opr.wfc)) ** 2
+      densities[jj, 0:par.num_x] = np.real(density)
+      densities[jj, par.num_x:2 * par.num_x] = np.abs(np.fft.fft(opr.wfc)) ** 2
       
       # Save potential
       potential[jj, :] = opr.V
@@ -269,19 +289,21 @@ def split_op(par: Param, opr: Operators) -> None:
       # Update jj
       jj += 1
 
-  return results, potential, avg_position
+  return densities, potential, avg_position
 
 # ===========================================================================================================
+# VISUALIZATION
+# ===========================================================================================================
 
-def plot_average_position(time, avg_position):
+def plot_average_position(par, avg_position):
   """
   plot_average_position :
     Plot the average position of the particle over time.
 
   Parameters
   ----------
-  time : np.ndarray
-    Array of time values.
+  par : Param
+    Parameters of the simulation.
   avg_position : np.ndarray
     Array of average position values.
 
@@ -289,85 +311,93 @@ def plot_average_position(time, avg_position):
   -------
   None
   """
+  # Compute time array (100 elements)
+  time = np.linspace(0, par.tsim, 100)
+  
+  # Plot
   plt.figure(figsize=(8, 6))
   plt.plot(time, avg_position, label="Average position $\langle x(t) \\rangle$")
   plt.xlabel("Time (t)")
   plt.ylabel("Position (x)")
-  plt.legend()
   plt.title("Average position of the particle over time")
 
+  # Show
+  plt.legend()
   plt.grid(True)
   plt.show()
   
 # ===========================================================================================================
 
-def gif_animation(par, density, potential, avg_position, filename='real_space_with_avg_position.gif'):
+def gif_animation(par, density, potential, avg_position, filename='qho_time_evolution.gif'):
+  """
+  gif_animation:
+    Creates an animated GIF showing the wave function, potential, and average position
+    at each timestep.
+
+  Parameters
+  ----------
+  par : Param
+    Parameters of the simulation (contains spatial grid, etc.)
+  density : numpy.ndarray
+    Array of the wave function density at each timestep.
+  potential : numpy.ndarray
+    Array of the potential at each timestep.
+  avg_position : numpy.ndarray
+    Array of the average position of the particle at each timestep.
+  filename : str, optional
+    Name of the output GIF file. Default is 'qho_time_evolution.gif'.
+  """
+  # Set up the figure and axis for the animation
+  fig, ax = plt.subplots()
+  ax.set_xlim(par.x_min, par.x_max)
+  ax.set_ylim(0, 1)
+  ax.set_xlabel("Position (x)")
+  ax.set_ylabel("Probability density |ψ(x)|^2")
+
+  # Lines for the wave function, potential, and average position
+  line_wfc, = ax.plot([], [], lw=1.5, label="|ψ(x)|^2", color='blue')
+  line_pot, = ax.plot([], [], lw=1.5, label="V(x)", color='gray', linestyle='--')
+  line_avg_pos, = ax.plot([], [], lw=1, label="Average Position", color='red', linestyle='-.')
+
+  ax.legend()
+
+  # Initialization function for the animation
+  def init_line():
     """
-    gif_animation:
-      Creates an animated GIF showing the wave function, potential, and average position
-      at each timestep.
-
-    Parameters
-    ----------
-    par : Param
-      Parameters of the simulation (contains spatial grid, etc.)
-    density : numpy.ndarray
-      Array of the wave function density at each timestep.
-    potential : numpy.ndarray
-      Array of the potential at each timestep.
-    avg_position : numpy.ndarray
-      Array of the average position of the particle at each timestep.
-    filename : str, optional
-      Name of the output GIF file. Default is 'real_space_with_avg_position.gif'.
+    init_line:
+      Initialization function for the animation.
     """
-    # Set up the figure and axis for the animation
-    fig, ax = plt.subplots()
-    ax.set_xlim(par.x_min, par.x_max)
-    ax.set_ylim(0, 1.5)
-    ax.set_xlabel("Position (x)")
-    ax.set_ylabel("Probability Density |ψ(x)|^2")
+    line_wfc.set_data([], [])
+    line_pot.set_data([], [])
+    line_avg_pos.set_data([], [])
+    return line_wfc, line_pot, line_avg_pos
 
-    # Lines for the wave function, potential, and average position
-    line_wfc, = ax.plot([], [], lw=2, label="Wave Function |ψ(x)|^2", color='blue')
-    line_pot, = ax.plot([], [], lw=2, label="Potential V(x)", color='gray', linestyle='--')
-    line_avg_pos, = ax.plot([], [], lw=2, label="Average Position", color='red', linestyle='-.')
+  def animate(i):
+    """
+    animate:
+      Animation function to update the plot at each frame.
+    """
+    # Extract density, potential and average position for frame i
+    y_wfc = density[i, :par.num_x]
+    y_pot = potential[i, :]
+    avg_pos = avg_position[i]
 
-    ax.legend()
-
-    # Initialization function for the animation
-    def init_line():
-        line_wfc.set_data([], [])
-        line_pot.set_data([], [])
-        line_avg_pos.set_data([], [])
-        return line_wfc, line_pot, line_avg_pos
-
-    # Animation function to update the plot at each frame
-    def animate(i):
-        x = par.x
-        y_wfc = density[i, :par.num_x]  # Extract density for frame i
-        y_pot = potential[i, :]  # Extract potential from the stored potential array
-        avg_pos = avg_position[i]  # Extract the average position for the current timestep
-
-        # Set data for the wave function and potential
-        line_wfc.set_data(x, y_wfc)
-        line_pot.set_data(x, y_pot)
-
-        # Update the average position line
-        line_avg_pos.set_data([avg_pos, avg_pos], [0, 1.5])  # Vertical line from y=0 to y=1.5
-
-        return line_wfc, line_pot, line_avg_pos
-
-    # Create the animation
-    anim = animation.FuncAnimation(
-        fig, animate, init_func=init_line, frames=100, interval=10, blit=True
-    )
-
-    # Save the animation as a GIF
-    writer = animation.PillowWriter(fps=10, metadata=dict(artist='Me'), bitrate=1800)
-    anim.save(filename, writer=writer)
+    # Set data for the wave function and potential
+    line_wfc.set_data(par.x, y_wfc)
+    line_pot.set_data(par.x, y_pot)
     
-    # Close the figure to prevent it from displaying in the notebook
-    plt.close(fig)
+    # Update the average position line
+    line_avg_pos.set_data([avg_pos, avg_pos], [0, 1.5])  # Vertical line from y=0 to y=1.5
+
+    return line_wfc, line_pot, line_avg_pos
+
+  # Create the animation and save as a GIF
+  anim = animation.FuncAnimation(fig, animate, init_func=init_line, frames=100, interval=10, blit=True)
+  writer = animation.PillowWriter(fps=10, metadata=dict(artist='Me'), bitrate=1800)
+  anim.save(filename, writer=writer)
+
+  # Close the figure to prevent it from displaying in the notebook
+  plt.close(fig)
     
-    # Final print statement
-    print(f"Animation saved as '{filename}'")
+  # Final print statement
+  print(f"Animation saved as '{filename}'")
