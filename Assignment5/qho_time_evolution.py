@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import debugger as db
 import auxiliary_functions as aux
+import matplotlib.ticker as ticker
 
 from matplotlib import animation
 
@@ -177,6 +178,7 @@ class Operators:
     self.V = 0.5 * (par.x - voffset - q0) ** 2 * self.omega **2
 
     # Wavefunction based on a harmonic oscillator eigenstate
+    #self.wfc = aux.harmonic_oscillator_spectrum(par.x - wfcoffset, self.omega, order, n).astype(complex)
     self.wfc = aux.harmonic_oscillator_spectrum(par.x - wfcoffset, self.omega, order, n).astype(complex)
 
     # Coefficient for imaginary or real time evolution
@@ -357,8 +359,8 @@ def gif_real_animation(par, density, potential, avg_position, filename='qho_time
   ax.set_ylabel("Probability density |ψ(x)|^2")
 
   # Lines for the wave function, potential, and average position
-  line_wfc, = ax.plot([], [], lw=1.5, label="|ψ(x)|^2", color='blue')
-  line_pot, = ax.plot([], [], lw=1.5, label="V(x)", color='gray', linestyle='--')
+  line_wfc, = ax.plot([], [], lw=2, label="|ψ(x)|^2", color='blue')
+  line_pot, = ax.plot([], [], lw=2, label="V(x)", color='gray', linestyle='--')
   line_avg_pos, = ax.plot([], [], lw=1, label="Average position", color='red', linestyle='-.')
 
   ax.legend(loc="upper left")
@@ -404,7 +406,8 @@ def gif_real_animation(par, density, potential, avg_position, filename='qho_time
   # Final print statement
   print(f"Animation saved as '{filename}'")
   
-  
+# ===========================================================================================================
+
 def gif_momentum_animation(par, density, filename='momentum_space.gif'):
   """
   gif_momentum_animation:
@@ -427,6 +430,12 @@ def gif_momentum_animation(par, density, filename='momentum_space.gif'):
   ax.set_xlabel("Momentum (k)")
   ax.set_ylabel("Amplitude |ψ(k)|^2")
 
+  # Enable scientific notation for the y-axis
+  formatter = ticker.ScalarFormatter(useMathText=True)
+  formatter.set_scientific(True)
+  formatter.set_powerlimits((-2, 2))
+  ax.yaxis.set_major_formatter(formatter)
+  
   # Initialize the line for momentum space
   line, = ax.plot([], [], lw=1.5, label="|ψ(k)|^2", color='blue')
   ax.legend()
