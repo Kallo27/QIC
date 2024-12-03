@@ -255,3 +255,61 @@ def build_density_matrix(state):
   """
   density_matrix = np.outer(state, state.conj())
   return density_matrix
+
+# ===========================================================================================================
+
+def rdm(psi, N, D, keep_indices):
+  """
+  rdm :
+    Computes the reduced density matrix of a quantum state by tracing out the 
+    degrees of freedom of the environment.
+
+  Parameters
+  ----------
+  psi : np.ndarray
+    Wavefunction of the quantum many-body system, represented as a complex vector of 
+    size D^N.
+  N : int
+    Number of subsystems.
+  D : int
+    Dimension of each subsystem.
+  keep_indices : list of int
+    Indices of the sites to retain in the subsystem (all other sites are traced out).
+
+  Returns
+  -------
+  reduced_density_matrix : np.ndarray
+    Reduced density matrix for the subsystem specified by keep_indices, which is a 
+    square matrix of size (D^len(keep_indices), D^len(keep_indices)).
+  """
+  # Check correct values for 'keep_indeces'
+  if not all(0 <= idx < N for idx in keep_indices):
+    raise ValueError(f"'keep_indices' must be valid indices within range(n_sites), got {keep_indices}")
+    
+  # Compute subsystem and environment dimensions
+  n_keep = len(keep_indices)
+  subsystem_dim = D ** n_keep
+  env_dim = D ** (N - n_keep)
+
+  # Reshape the wavefunction into a tensor
+  psi_tensor = psi.reshape([D] * N)
+
+  # Reorder the axes to group subsystem (first) and environment (second)
+  all_indices = list(range(N))
+  env_indices = [i for i in all_indices if i not in keep_indices] # complement of keep_indices
+  reordered_tensor = np.transpose(psi_tensor, axes=keep_indices + env_indices)
+
+  # Partition into subsystem and environment (reshape back)
+  psi_partitioned = reordered_tensor.reshape((subsystem_dim, env_dim))
+
+  # Compute the reduced density matrix
+  rdm = np.dot(psi_partitioned, psi_partitioned.conj().T)
+
+  return rdm
+
+# ===========================================================================================================
+
+def trace_check(density_matrix):
+  trace = round(np.trace(density_matrix), 8)
+  result = "The trace is 1 (as expected)" if trace == 1 else f"The trace is: {trace} \n Something is wrong!!!"
+  return result
