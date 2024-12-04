@@ -5,7 +5,7 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
 ## Assignments Overview
 
 ### 1. **Assignment 1: Introduction to Fortran and numerical performance**
-   - **Description**: [This assignment focuses on introducing Fortran programming and exploring the fundamentals of numerical precision and performance in computational tasks. The goal is to familiarize students with basic programming practices in Fortran, investigate the limitations of numerical types, and analyze computational performance for matrix operations.]
+   - **Description**: This assignment focuses on introducing Fortran programming and exploring the fundamentals of numerical precision and performance in computational tasks. The goal is to familiarize students with basic programming practices in Fortran, investigate the limitations of numerical types, and analyze computational performance for matrix operations.
    - **Slides**: [Final slides](./Assignment1/Assignment1%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
 ### 2. **Assignment 2: Title of Assignment**

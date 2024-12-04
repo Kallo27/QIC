@@ -255,9 +255,9 @@ def build_density_matrix(state):
   density_matrix : np.ndarray
     Density matrix
   """
+  # Build the density matrix
   density_matrix = np.outer(state, state.conj())
   return density_matrix
-
 # ===========================================================================================================
 
 def rdm(psi, N, D, keep_indices):
