@@ -41,15 +41,17 @@ def separable_state(N, D, predefined_states=None):
     Normalized separable pure state vector for the composite system.
   """
   # Initialize the states as predefined states or as empty list
-  states = predefined_states if predefined_states else []
+  states = predefined_states if predefined_states is not None else []
 
-  if not predefined_states:
+  if predefined_states is None:
     # Generate N random state vectors of dimension D
     for _ in range(N):
       psi = np.random.rand(D) + 1j * np.random.rand(D)
       psi /= np.linalg.norm(psi)
       states.append(psi)
   else:
+    # Check normalization
+    states = [psi / np.linalg.norm(psi) for psi in states]
     # Ensure the provided states match the dimensions
     if len(predefined_states) != N or any(len(psi) != D for psi in predefined_states):
       raise ValueError("Predefined states must match the number and dimension of subsystems (N, D).")
@@ -89,7 +91,7 @@ def general_state(N, D, predefined_state=None):
     # Ensure the provided state match the dimension
     if len(predefined_state) != total_dim:
       raise ValueError(f"Predefined state must have length {total_dim}.")
-    psi = predefined_state
+    psi = predefined_state.astype(complex)
   else:
     # Generate a normalized random complex wave function
     psi = np.random.rand(total_dim) + 1j * np.random.rand(total_dim)
@@ -313,3 +315,47 @@ def trace_check(density_matrix):
   trace = round(np.trace(density_matrix), 8)
   result = "The trace is 1 (as expected)" if trace == 1 else f"The trace is: {trace} \n Something is wrong!!!"
   return result
+
+# ===========================================================================================================
+# TESTING
+# ===========================================================================================================
+
+def test_state(state, N, D, expected_rdm_0, expected_rdm_1):
+  """
+  test_state:
+    Tests the accuracy of the reduced density matrix calculations for a given quantum state.
+
+  Parameters
+  ----------
+  state : ndarray
+    The quantum state vector to test (can be a separable or an entangled state).
+  N : int
+    Number of subsystems.
+  D : int
+    Dimension of each subsystem.
+  expected_rdm_0 : np.ndarray
+    The expected reduced density matrix for the qubit 0 (should be a D x D matrix).
+  expected_rdm_1 : np.ndarray
+    The expected reduced density matrix for the qubit 1 (should be a D x D matrix).
+      
+  Returns
+  ----------
+  None
+  """
+  print(f"\nTesting state:\n {state}")
+  
+  # Compute density matrix
+  density = build_density_matrix(state)
+  print(f"Density matrix:\n {density}")
+
+  # Compute rdm for the first and the second qubit
+  rdm_qubit_0 = rdm(state, N, D, keep_indices=[0])
+  rdm_qubit_1 = rdm(state, N, D, keep_indices=[1])
+  print(f"Reduced density matrix (qubit 0):\n {rdm_qubit_0}")
+  print(f"Reduced density matrix (qubit 1):\n {rdm_qubit_1}")
+  
+  # Check if numerical and analytical solution are the same
+  print(f"Qubit 0 correct: {np.allclose(rdm_qubit_0, expected_rdm_0)}")
+  print(f"Qubit 1 correct: {np.allclose(rdm_qubit_1, expected_rdm_1)}")
+  
+# ===========================================================================================================
