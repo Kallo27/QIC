@@ -184,7 +184,7 @@ def plot_efficiency(N_values, D_values, repetitions=10):
   global_min_bytes = min(sep_b.min(), gen_b.min())
   global_max_bytes = max(sep_b.max(), gen_b.max())
 
-  fig, ax = plt.subplots(2, 2, figsize=(12, 12))
+  fig, ax = plt.subplots(2, 2, figsize=(12, 10))
 
   # Plot heatmap for separable states
   im1 = ax[0, 0].imshow(sep, cmap="cividis", origin="lower", aspect="auto", vmin=global_min, vmax=global_max)
