@@ -9,21 +9,21 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
    - **Slides**: [Final slides](./Assignment1/Assignment1%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
 ### 2. **Assignment 2: Checkpoints, documentation and derived types**
-   - **Description**: []
+   - **Description**: This assignment focuses on enhancing programming and debugging skills in Fortran90 by implementing checkpoints, improving documentation, and utilizing derived types.
    - **Slides**: [Final slides](./Assignment2/Assignment2%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
 ### 3. **Assignment 3: Python scripting, random matrices and eigenproblem**
-   - **Description**: []
+   - **Description**: This assignment delves into matrix operations and random matrix theory, focusing on the scaling of computational methods, eigenvalue analysis, and statistical properties of eigenvalue spacings.
    - **Report**: [Final report](./Assignment3/Assignment3%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
 ### 4. **Assignment 4: Quantum harmonic oscillator**
-   - **Description**: []
+   - **Description**: The assignment focuses on implementing computational methods for solving the time-independent Schrödinger equation in one dimension, specifically for the quantum harmonic oscillator.
    - **Report**: [Final report](./Assignment4/Assignment4%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
 ### 5. **Assignment 5: Time-dependent Schroedinger equation**
-   - **Description**: []
+   - **Description**: This assignment focuses on solving the time-dependent Schrödinger equation for a one-dimensional quantum harmonic oscillator with a time-dependent potential.
    - **Slides**: [Final slides](./Assignment5/Assignment5%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
 ### 6. **Assignment 6: Density matrices**
-   - **Description**: []
+   - **Description**: This assignment focuses on density matrices in quantum systems: the focus is on describing a composite system for both separable and general N-body pure states and density matrix representation.
    - **Report**: [Final report](./Assignment6/Assignment6%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
