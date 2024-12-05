@@ -8,21 +8,22 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
    - **Description**: This assignment focuses on introducing Fortran programming and exploring the fundamentals of numerical precision and performance in computational tasks. The goal is to familiarize students with basic programming practices in Fortran, investigate the limitations of numerical types, and analyze computational performance for matrix operations.
    - **Slides**: [Final slides](./Assignment1/Assignment1%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
-### 2. **Assignment 2: Title of Assignment**
+### 2. **Assignment 2: Checkpoints, documentation and derived types**
    - **Description**: []
    - **Slides**: [Final slides](./Assignment2/Assignment2%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
-### 3. **Assignment 3: Title of Assignment**
+### 3. **Assignment 3: Python scripting, random matrices and eigenproblem**
    - **Description**: []
    - **Report**: [Final report](./Assignment3/Assignment3%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
-### 4. **Assignment 4: Title of Assignment**
+### 4. **Assignment 4: Quantum harmonic oscillator**
    - **Description**: []
    - **Report**: [Final report](./Assignment4/Assignment4%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
-### 5. **Assignment 5: Title of Assignment**
+### 5. **Assignment 5: Time-dependent Schroedinger equation**
    - **Description**: []
    - **Slides**: [Final slides](./Assignment5/Assignment5%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
-### 6. **Assignment 5: Title of Assignment**
+### 6. **Assignment 6: Density matrices**
    - **Description**: []
+   - **Report**: [Final report](./Assignment6/Assignment6%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
