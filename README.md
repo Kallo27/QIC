@@ -20,7 +20,7 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
    - **Description**: The assignment focuses on implementing computational methods for solving the time-independent Schrödinger equation in one dimension, specifically for the quantum harmonic oscillator.
    - **Report**: [Final report](./Assignment4/Assignment4%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
-### 5. **Assignment 5: Time-dependent Schroedinger equation**
+### 5. **Assignment 5: Time-dependent Schrödinger equation**
    - **Description**: This assignment focuses on solving the time-dependent Schrödinger equation for a one-dimensional quantum harmonic oscillator with a time-dependent potential.
    - **Slides**: [Final slides](./Assignment5/Assignment5%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
 
