@@ -11,6 +11,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.sparse as sp
 
 # ===========================================================================================================
 # ISING MODEL
@@ -19,16 +20,16 @@ import matplotlib.pyplot as plt
 def pauli_matrices():
   """
   pauli_matrices:
-    Builds the Puali matrices.
+    Builds the Pauli matrices as sparse matrices.
 
   Returns
   -------
-  s_x, s_y, s_z: tuple of np.ndarray
-    Pauli matrices for a 2x2 system.
+  s_x, s_y, s_z: tuple of sp.csr_matrix
+    Pauli matrices for a 2x2 system in sparse format.
   """
-  s_x = np.array([[0, 1], [1, 0]])
-  s_y = np.array([[0, -1j], [1j, 0]])
-  s_z = np.array([[1, 0], [0, -1]])
+  s_x = sp.csr_matrix([[0, 1], [1, 0]], dtype=complex)
+  s_y = sp.csr_matrix([[0, -1j], [1j, 0]], dtype=complex)
+  s_z = sp.csr_matrix([[1, 0], [0, -1]], dtype=complex)
   return s_x, s_y, s_z
 
 # ===========================================================================================================
@@ -36,7 +37,7 @@ def pauli_matrices():
 def ising_hamiltonian(N, l):
   """
   ising_hamiltonian:
-    Builds the Ising model Hamiltonian.
+    Builds the Ising model Hamiltonian using sparse matrices.
 
   Parameters
   ----------
@@ -47,21 +48,21 @@ def ising_hamiltonian(N, l):
 
   Returns
   -------
-  H : np.ndarray
-    Ising Hamiltonian.
+  H : sp.csr_matrix
+    Sparse Ising Hamiltonian.
   """
   dim = 2 ** N
-  H_nonint = np.zeros((dim, dim))
-  H_int = np.zeros((dim, dim))
+  H_nonint = sp.csr_matrix((dim, dim), dtype=complex)
+  H_int = sp.csr_matrix((dim, dim), dtype=complex)
   
   s_x, _, s_z = pauli_matrices()
   
   for i in range(N):
-    zterm = np.kron(np.eye(2**i), np.kron(s_z, np.eye(2**(N - i - 1))))
+    zterm = sp.kron(sp.identity(2**i, format='csr'), sp.kron(s_z, sp.identity(2**(N - i - 1), format='csr')))
     H_nonint += zterm
     
   for i in range(N - 1):
-    xterm = np.kron(np.eye(2**i), np.kron(s_x, np.kron(s_x, np.eye(2**(N - i - 2)))))
+    xterm = sp.kron(sp.identity(2**i, format='csr'), sp.kron(s_x, sp.kron(s_x, sp.identity(2**(N - i - 2), format='csr'))))
     H_int += xterm
   
   H = H_int + l * H_nonint
@@ -71,10 +72,10 @@ def ising_hamiltonian(N, l):
 # EIGENVALUES
 # ===========================================================================================================
 
-def diagonalize_ising(N_values, l_values):
+def diagonalize_ising(N_values, l_values, k):
   """
   diagonalize_ising :
-    Diagonalize the Ising Hamiltonian for different values of N and l.
+    Diagonalize the Ising Hamiltonian for different values of N and l using sparse methods.
 
   Parameters
   ----------
@@ -85,8 +86,8 @@ def diagonalize_ising(N_values, l_values):
 
   Returns
   -------
-  eigenvalues, eigenvectors : tuple of np.ndarray
-    Eigenvalues and eigenstates of the Ising Hamiltonian for different
+  eigenvalues, eigenvectors : tuple of dict
+    Eigenvalues and eigenvectors of the Ising Hamiltonian for different
     values of N and l.
   """
   eigenvalues = {}
@@ -94,19 +95,32 @@ def diagonalize_ising(N_values, l_values):
   
   for N in N_values:
     print(f"Diagonalizing Ising Hamiltonian with N={N} ...")
+    x = min(k, N - 1)
     
     for l in l_values:
-      eigval, eigvec = np.linalg.eigh(ising_hamiltonian(N, l))
+      # Generate the sparse Ising Hamiltonian
+      H = ising_hamiltonian(N, l)
+      
+      # Diagonalize the Hamiltonian
+      
+      eigval, eigvec = sp.linalg.eigsh(H, k=x, which='SA')  # Compute the smallest `k` eigenvalues
+      eigvec = eigvec.T
+
+      for i in range(x):
+        eigvec[i] /= np.linalg.norm(eigvec[i])
+        
       eigenvalues[(N, l)] = eigval
       eigenvectors[(N, l)] = eigvec
   
   return eigenvalues, eigenvectors
 
+
 # ===========================================================================================================
 
-def plot_eigenvalues(N_values, l_values, k):
+def plot_eigenvalues(N_values, l_values, eigenvalues):
   """
-  Plot the first k energy levels as a function of l for different N.
+  plot_eigenvalues :
+    Plot the first k energy levels as a function of l for different N.
   
   Parameters
   ----------
@@ -114,25 +128,31 @@ def plot_eigenvalues(N_values, l_values, k):
     Values of N, number of spins in the system.
   l_values : list of float
     Values of l, interaction strength.
+  eigenvalues : list of float
+    Precomputed eigenvalues for every (N, l).
   k : int
     Number of lowest energy levels to plot.
   
   Returns
   ----------
   None
-  """
-  # Get eigenvalues
-  eigenvalues, _ = diagonalize_ising(N_values, l_values)
-  
+  """  
   # Loop over the values of N (many plots)
   for N in N_values:
     plt.figure(figsize=(8, 5))
+    
+    # Compute the number of available eigenvalues
+    k = len(eigenvalues[N, l_values[0]])
       
     # Loop over the first k levels
     for level in range(k):
-      # Extract the first k energies given fixed values for N and l
-      energies = [eigenvalues[(N, l)][level] for l in l_values]
+      energies = []
+      for l in l_values:
+        energies.append(eigenvalues[(N, l)][level] / N)
+          
       plt.plot(l_values, energies, label=f'Level {level + 1}')
+    
+    plt.axvline(x = -1, linestyle="--", color = "red", label="Critical point")
         
     # Plot formatting
     plt.xlabel('Interaction strength (λ)')
@@ -141,3 +161,46 @@ def plot_eigenvalues(N_values, l_values, k):
     plt.legend(loc='upper left')
     plt.grid()
     plt.show()
+
+# ===========================================================================================================
+
+def plot_energy_gaps(N_values, l_values, eigenvalues):
+  """
+  plot_energy_gaps :
+    Plot the energy gap (between first excited state and ground state) 
+    as a function of l for different N.
+  
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  l_values : list of float
+    Values of l, interaction strength.
+  eigenvalues : np.ndarray
+    Precomputed eigenvalues for every (N, l).
+  
+  Returns
+  ----------
+  None
+  """  
+  plt.figure(figsize=(8, 5))
+    
+  # Loop over the values of N (many plots)
+  for N in N_values:    
+    gaps = []
+    # Loop over the first k levels
+    for l in l_values:
+      gap = (eigenvalues[(N, l)][1] - eigenvalues[(N, l)][0]) / N
+      gaps.append(gap)
+
+    plt.plot(l_values, gaps, label = f"level {N}")
+  
+  plt.axvline(x = -1, linestyle="--", color = "red", label="Critical point")
+      
+  # Plot formatting
+  plt.xlabel('Interaction strength (λ)')
+  plt.ylabel('Energy')
+  plt.title(f'Normalized energy gap vs λ')
+  plt.legend(loc="upper right")
+  plt.grid()
+  plt.show()
