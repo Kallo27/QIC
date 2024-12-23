@@ -9,9 +9,13 @@
 # IMPORT ZONE
 # ===========================================================================================================
 
+import numpy as np
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
+
 import ising_model as im
+
+from scipy.optimize import curve_fit
 
 
 # ===========================================================================================================
@@ -87,6 +91,36 @@ def plot_energy_gaps(N_values, l_values, eigenvalues, no_deg = True):
   return min_gaps, min_ls
 
 # ===========================================================================================================
+
+def plot_pt_gap(N_values, ls):
+  """
+  plot_pt_gap:
+    Plot minimum energy gap for different N (phase transition analysis).
+
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  ls : list of float
+    Values of l corresponding to the minimum energy gap.
+    
+  Returns
+  ----------
+  None
+  """
+  plt.figure(figsize=(6, 4))
+
+  plt.plot(ls, N_values, marker='o', linestyle='-', color='orange')
+
+  plt.xlim(0.3, 1)
+  plt.xlabel('L values')
+  plt.ylabel('N values')
+  plt.title('Critical point for different N (energy gap)')
+  plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+  plt.tight_layout()
+  plt.show()
+  
+# ===========================================================================================================
 # MAGNETIZATION
 # ===========================================================================================================
 
@@ -125,8 +159,7 @@ def magnetization(ground_state, N):
 def plot_magnetization(N_values, l_values, eigenvectors):
   """
   plot_magnetization :
-    Plot the energy gap (between first excited state and ground state) 
-    as a function of l for different N.
+    Plot the magnetization as a function of l for different N.
   
   Parameters
   ----------
@@ -151,7 +184,7 @@ def plot_magnetization(N_values, l_values, eigenvectors):
       M = magnetization(eigenvectors[(N, l)][0], N)
       Ms.append(M)
 
-    plt.plot(l_values, Ms, marker='^', linestyle='--', label = f"N={N}", markersize=6)
+    plt.plot(l_values, Ms, marker='^', linestyle='--', label = f"N={N}", markersize=3)
   
   plt.axvline(x = 1, linestyle="--", color = "red", label="Critical point")
       
@@ -162,4 +195,73 @@ def plot_magnetization(N_values, l_values, eigenvectors):
   plt.xscale('log')
   plt.legend(loc="lower left")
   plt.grid()
+  plt.show()
+  
+# ===========================================================================================================
+  
+def plot_pt_magnetization(N_values, l_values, eigenvectors):
+  """
+  plot_pt_magnetization:
+    Plot inflection point for different N (phase transition analysis).
+
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  l_values : list of float
+    Values of l, interaction strength.
+  eigenvecttors : np.ndarray
+    Precomputed eigenvectors for every (N, l).
+  
+  Returns
+  ----------
+  None
+  """
+  infl_points = []  # To store inflection points for each N
+
+  for N in N_values:    
+    Ms = []
+    # Compute magnetizations for all `l` values
+    for l in l_values:
+      M = magnetization(eigenvectors[(N, l)][0], N)  # Assuming ptf.magnetization is defined
+      Ms.append(M)
+    
+    # Compute second derivative
+    second_derivative = np.gradient(np.gradient(Ms))
+    
+    # Find inflection points (where the sign of the second derivative changes)
+    sign_changes = np.diff(np.sign(second_derivative))
+    infl_points_index = np.where(sign_changes != 0)[0]
+    
+    # Store the first inflection point index for this N (or process as needed)
+    if len(infl_points_index) > 0:
+      infl_points.append(l_values[infl_points_index[0]])
+    else:
+      infl_points.append(None)  # No inflection point found for this N
+  
+  # Define the model function: -1 + a/N
+  def model(N, a):
+    return 1 + a / N
+
+  # Perform the curve fitting
+  params, covariance = curve_fit(model, N_values, infl_points)
+
+  # Extract fitted parameter
+  a_fit = params[0]
+
+  # Generate fitted values for plotting
+  N_fit = np.linspace(min(N_values), max(N_values), 500)
+  lambda_fit = model(N_fit, a_fit)
+  
+  # Plot the inflection points as a function of N
+  plt.figure(figsize=(6, 4))
+  plt.plot(infl_points, N_values, marker='o', linestyle='-', color='orange', label='Data')
+  plt.plot(lambda_fit, N_fit, color='red', linestyle='--', label=f'Fit: $+1 {a_fit:.3f}/N$', zorder=2)
+  plt.ylabel('N')
+  plt.xlabel('Inflection point')
+  plt.title('Critical point for different N (magnetization)')
+  plt.xlim(0.3, 1)
+  plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+  plt.legend(fontsize=10)
+  plt.tight_layout()
   plt.show()
