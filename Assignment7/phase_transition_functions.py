@@ -265,3 +265,220 @@ def plot_pt_magnetization(N_values, l_values, eigenvectors):
   plt.legend(fontsize=10)
   plt.tight_layout()
   plt.show()
+
+# ===========================================================================================================
+# ENTROPY
+# ===========================================================================================================
+  
+def rdm(psi, N, D, keep_indices):
+  """
+  rdm :
+    Computes the reduced density matrix of a quantum state by tracing out the 
+    degrees of freedom of the environment.
+
+  Parameters
+  ----------
+  psi : np.ndarray
+    Wavefunction of the quantum many-body system, represented as a complex vector of 
+    size D^N.
+  N : int
+    Number of subsystems.
+  D : int
+    Dimension of each subsystem.
+  keep_indices : list of int
+    Indices of the sites to retain in the subsystem (all other sites are traced out).
+
+  Returns
+  -------
+  reduced_density_matrix : np.ndarray
+    Reduced density matrix for the subsystem specified by keep_indices, which is a 
+    square matrix of size (D^len(keep_indices), D^len(keep_indices)).
+  """
+  # Check correct values for 'keep_indices'
+  if not all(0 <= idx < N for idx in keep_indices):
+    raise ValueError(f"'keep_indices' must be valid indices within range(n_sites), got {keep_indices}")
+    
+  # Compute subsystem and environment dimensions
+  n_keep = len(keep_indices)
+  subsystem_dim = D ** n_keep
+  env_dim = D ** (N - n_keep)
+
+  # Reshape the wavefunction into a tensor
+  psi_tensor = psi.reshape([D] * N)
+
+  # Reorder the axes to group subsystem (first) and environment (second)
+  all_indices = list(range(N))
+  env_indices = [i for i in all_indices if i not in keep_indices] # complement of keep_indices
+  reordered_tensor = np.transpose(psi_tensor, axes=keep_indices + env_indices)
+
+  # Partition into subsystem and environment (reshape back)
+  psi_partitioned = reordered_tensor.reshape((subsystem_dim, env_dim))
+
+  # Compute the reduced density matrix
+  rdm = np.dot(psi_partitioned, psi_partitioned.conj().T)
+
+  return rdm
+
+# ===========================================================================================================
+
+def von_neumann_entropy(state_vector, N, D, keep_indices):
+  """
+  Computes the Von Neumann entropy for a given quantum state vector.
+
+  Parameters
+  ----------
+  state_vector : np.ndarray
+    The quantum state vector of the entire system, assumed to be normalized.
+  N : int
+    Number of subsystems.
+  D : int
+    Dimension of each subsystem.
+  keep_indices : list of int
+    Indices of the sites to retain in the subsystem.
+
+  Returns
+  -------
+  entropy : float
+    The Von Neumann entropy of the subsystem.
+  """
+  # Compute the reduced density matrix
+  reduced_density_matrix = rdm(state_vector, N, D, keep_indices)
+
+  # Compute eigenvalues of the reduced density matrix
+  eigenvalues = np.linalg.eigvalsh(reduced_density_matrix)
+
+  # Filter out small eigenvalues to avoid log(0)
+  non_zero_eigenvalues = eigenvalues[eigenvalues > 1e-12]
+
+  # Compute the Von Neumann entropy
+  entropy = -np.sum(non_zero_eigenvalues * np.log(non_zero_eigenvalues))
+  #entropy /= N
+
+  return entropy
+
+# ===========================================================================================================
+
+def plot_entropy(N_values, l_values, eigenvectors):
+  """
+  plot_entropy :
+    Plot the Von Neumann entropy as a function of l for different N.
+  
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  l_values : list of float
+    Values of l, interaction strength.
+  eigenvecttors : np.ndarray
+    Precomputed eigenvectors for every (N, l).
+  
+  Returns
+  ----------
+  None
+  """  
+  plt.figure(figsize=(8, 5))
+    
+  # Loop over the values of N (many plots)
+  for N in N_values:    
+    Ss = []
+    # Loop over the first k levels
+    for l in l_values:
+      S = von_neumann_entropy(eigenvectors[(N, l)][0], N, 2, list(range(N // 2)))
+      Ss.append(S)
+
+    plt.plot(l_values, Ss, marker='^', linestyle='--', label = f"N={N}", markersize=3)
+  
+  plt.axvline(x = 1, linestyle="--", color = "red", label="Critical point")
+      
+  # Plot formatting
+  plt.xlabel('Interaction strength (λ)')
+  plt.ylabel('Von Neumann entropy')
+  plt.title(f'Entropy vs λ')
+  plt.xscale('log')
+  plt.legend(loc="lower left")
+  plt.grid()
+  plt.show()
+
+# ===========================================================================================================
+
+def fit_entropy_scaling(N_values, S_norm_values):
+  """
+  Fit the normalized entropy data S_norm vs ln(N) to estimate the central charge c.
+
+  Parameters
+  ----------
+  N_values : list or np.ndarray
+      Array of system sizes (N).
+  S_norm_values : list or np.ndarray
+      Array of normalized entropies (S_norm) corresponding to the system sizes.
+
+  Returns
+  -------
+  c : float
+      Estimated central charge (c).
+  c_over_6 : float
+      Fitted value of c/6 (slope of the curve).
+  const : float
+      Fitted constant offset.
+  fit_params : np.ndarray
+      The parameters of the fit [c/6, const].
+  fit_errors : np.ndarray
+      The standard errors of the fit parameters.
+  """
+  # Define the scaling function
+  def scaling_fn(ln_N, c, const):
+    return c / 6 * ln_N + const
+
+  # Convert system sizes to natural log
+  ln_N = np.log(N_values)
+
+  # Perform the curve fitting
+  fit_params, covariance = curve_fit(scaling_fn, ln_N, S_norm_values)
+  fit_errors = np.sqrt(np.diag(covariance))  # Standard errors of the parameters
+
+  # Extract c/6 and constant from the fit
+  c, const = fit_params
+
+  # Plot the data and the fit
+  plt.figure(figsize=(8, 6))
+  plt.plot(ln_N, S_norm_values, 'o', label='Data')
+  plt.plot(ln_N, scaling_fn(ln_N, *fit_params), '-', label=f'Fit: c = {c:.4f}')
+  plt.xlabel('ln(N)', fontsize=12)
+  plt.ylabel('S_norm', fontsize=12)
+  plt.title('Entropy Scaling Fit', fontsize=14)
+  plt.legend(fontsize=10)
+  plt.grid(True)
+  plt.show()
+
+  return fit_params, fit_errors
+
+# ===========================================================================================================
+
+def analyze_entropy_scaling(state_vectors, N_values):
+  """
+  Analyze entropy scaling for multiple system sizes and compute the central charge.
+
+  Parameters
+  ----------
+  state_vectors : list of np.ndarray
+      List of quantum state vectors for different system sizes.
+  dimensions : list of int
+      List of corresponding system sizes (N).
+
+  Returns
+  -------
+  c : float
+      Estimated central charge (c) from the fit.
+  """
+  normalized_entropies = []
+
+  # Compute normalized entropies for all system sizes
+  for N in N_values:
+    D = 2  # Assuming 2-dimensional subsystems (qubits)
+    entropy = von_neumann_entropy(state_vectors[(N, 1)][0], N, D, list(range(N // 2)))
+    normalized_entropies.append(entropy)
+
+  # Fit entropy scaling
+  fit_params, fit_errors = fit_entropy_scaling(N_values, normalized_entropies)
+
+  print(f"Estimated central charge: {fit_params[0]} +/- {fit_errors[0]}")
