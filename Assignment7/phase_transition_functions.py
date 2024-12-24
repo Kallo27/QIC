@@ -341,10 +341,8 @@ def von_neumann_entropy(state_vector, N, D, keep_indices):
   entropy : float
     The Von Neumann entropy of the subsystem.
   """
-  # Compute the reduced density matrix
+  # Compute the reduced density matrix and its eigenvalues
   reduced_density_matrix = rdm(state_vector, N, D, keep_indices)
-
-  # Compute eigenvalues of the reduced density matrix
   eigenvalues = np.linalg.eigvalsh(reduced_density_matrix)
 
   # Filter out small eigenvalues to avoid log(0)
@@ -352,8 +350,6 @@ def von_neumann_entropy(state_vector, N, D, keep_indices):
 
   # Compute the Von Neumann entropy
   entropy = -np.sum(non_zero_eigenvalues * np.log(non_zero_eigenvalues))
-  #entropy /= N
-
   return entropy
 
 # ===========================================================================================================
@@ -378,10 +374,10 @@ def plot_entropy(N_values, l_values, eigenvectors):
   """  
   plt.figure(figsize=(8, 5))
     
-  # Loop over the values of N (many plots)
+  # Loop over the values of N
   for N in N_values:    
     Ss = []
-    # Loop over the first k levels
+    # Loop over the values of N
     for l in l_values:
       S = von_neumann_entropy(eigenvectors[(N, l)][0], N, 2, list(range(N // 2)))
       Ss.append(S)
@@ -401,29 +397,24 @@ def plot_entropy(N_values, l_values, eigenvectors):
 
 # ===========================================================================================================
 
-def fit_entropy_scaling(N_values, S_norm_values):
+def fit_entropy_scaling(N_values, S_values):
   """
-  Fit the normalized entropy data S_norm vs ln(N) to estimate the central charge c.
+  fit_entropy_scaling :
+    Fit the entropy data vs ln(N) to estimate the central charge c.
 
   Parameters
   ----------
-  N_values : list or np.ndarray
-      Array of system sizes (N).
-  S_norm_values : list or np.ndarray
-      Array of normalized entropies (S_norm) corresponding to the system sizes.
-
+  N_values : list of int
+    Values of N, number of spins in the system.
+  S_values : list of float
+    Values of S, precomputed Von Neumann entropy (lambda = 1).
+  
   Returns
   -------
-  c : float
-      Estimated central charge (c).
-  c_over_6 : float
-      Fitted value of c/6 (slope of the curve).
-  const : float
-      Fitted constant offset.
   fit_params : np.ndarray
-      The parameters of the fit [c/6, const].
+    The parameters of the fit.
   fit_errors : np.ndarray
-      The standard errors of the fit parameters.
+    The standard errors of the fit parameters.
   """
   # Define the scaling function
   def scaling_fn(ln_N, c, const):
@@ -433,19 +424,16 @@ def fit_entropy_scaling(N_values, S_norm_values):
   ln_N = np.log(N_values)
 
   # Perform the curve fitting
-  fit_params, covariance = curve_fit(scaling_fn, ln_N, S_norm_values)
-  fit_errors = np.sqrt(np.diag(covariance))  # Standard errors of the parameters
-
-  # Extract c/6 and constant from the fit
-  c, const = fit_params
+  fit_params, covariance = curve_fit(scaling_fn, ln_N, S_values)
+  fit_errors = np.sqrt(np.diag(covariance))
 
   # Plot the data and the fit
   plt.figure(figsize=(8, 6))
-  plt.plot(ln_N, S_norm_values, 'o', label='Data')
-  plt.plot(ln_N, scaling_fn(ln_N, *fit_params), '-', label=f'Fit: c = {c:.4f}')
+  plt.plot(ln_N, S_values, 'o', label='Data')
+  plt.plot(ln_N, scaling_fn(ln_N, *fit_params), '-', label=f'Fit: c = {fit_params[0]:.4f}')
   plt.xlabel('ln(N)', fontsize=12)
-  plt.ylabel('S_norm', fontsize=12)
-  plt.title('Entropy Scaling Fit', fontsize=14)
+  plt.ylabel('Von Neumann entropy', fontsize=12)
+  plt.title('Entropy scaling with N', fontsize=14)
   plt.legend(fontsize=10)
   plt.grid(True)
   plt.show()
@@ -454,28 +442,28 @@ def fit_entropy_scaling(N_values, S_norm_values):
 
 # ===========================================================================================================
 
-def analyze_entropy_scaling(state_vectors, N_values):
+def analyze_entropy_scaling(eigenvectors, N_values):
   """
-  Analyze entropy scaling for multiple system sizes and compute the central charge.
+  analyze_entropy_scaling : 
+    Analyze entropy scaling for multiple system sizes.
 
   Parameters
   ----------
-  state_vectors : list of np.ndarray
-      List of quantum state vectors for different system sizes.
-  dimensions : list of int
-      List of corresponding system sizes (N).
+  eigenvectors : list of np.ndarray
+    List of eigenvectors for different system sizes.
+  N_values : list of int
+    Values of N, number of spins in the system.
 
   Returns
   -------
-  c : float
-      Estimated central charge (c) from the fit.
+  None
   """
   normalized_entropies = []
 
   # Compute normalized entropies for all system sizes
   for N in N_values:
-    D = 2  # Assuming 2-dimensional subsystems (qubits)
-    entropy = von_neumann_entropy(state_vectors[(N, 1)][0], N, D, list(range(N // 2)))
+    D = 2
+    entropy = von_neumann_entropy(eigenvectors[(N, 1)][0], N, D, list(range(N // 2)))
     normalized_entropies.append(entropy)
 
   # Fit entropy scaling
