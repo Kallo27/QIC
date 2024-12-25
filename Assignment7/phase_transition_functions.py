@@ -41,7 +41,7 @@ def plot_energy_gaps(N_values, l_values, eigenvalues, no_deg = True):
     Default is True (no degeneration).
   
   Returns
-  ----------
+  -------
   min_gaps, min_ls : tuple of list
     List of energy gaps and corresponding values of lambda.
   """  
@@ -105,7 +105,7 @@ def plot_pt_gap(N_values, ls):
     Values of l corresponding to the minimum energy gap.
     
   Returns
-  ----------
+  -------
   None
   """
   plt.figure(figsize=(6, 4))
@@ -171,7 +171,7 @@ def plot_magnetization(N_values, l_values, eigenvectors):
     Precomputed eigenvectors for every (N, l).
   
   Returns
-  ----------
+  -------
   None
   """  
   plt.figure(figsize=(8, 5))
@@ -214,7 +214,7 @@ def plot_pt_magnetization(N_values, l_values, eigenvectors):
     Precomputed eigenvectors for every (N, l).
   
   Returns
-  ----------
+  -------
   None
   """
   infl_points = []  # To store inflection points for each N
@@ -365,11 +365,11 @@ def plot_entropy(N_values, l_values, eigenvectors):
     Values of N, number of spins in the system.
   l_values : list of float
     Values of l, interaction strength.
-  eigenvecttors : np.ndarray
+  eigenvectors : dict
     Precomputed eigenvectors for every (N, l).
   
   Returns
-  ----------
+  -------
   None
   """  
   plt.figure(figsize=(8, 5))
@@ -442,17 +442,17 @@ def fit_entropy_scaling(N_values, S_values):
 
 # ===========================================================================================================
 
-def analyze_entropy_scaling(eigenvectors, N_values):
+def analyze_entropy_scaling(N_values, eigenvectors):
   """
   analyze_entropy_scaling : 
     Analyze entropy scaling for multiple system sizes.
 
   Parameters
   ----------
-  eigenvectors : list of np.ndarray
-    List of eigenvectors for different system sizes.
   N_values : list of int
     Values of N, number of spins in the system.
+  eigenvectors : dict
+    Precomputed eigenvectors for every (N, l).
 
   Returns
   -------
@@ -470,3 +470,183 @@ def analyze_entropy_scaling(eigenvectors, N_values):
   fit_params, fit_errors = fit_entropy_scaling(N_values, normalized_entropies)
 
   print(f"Estimated central charge: {fit_params[0]} +/- {fit_errors[0]}")
+  
+# ===========================================================================================================
+# TWO POJNT CORRELATION
+# ===========================================================================================================  
+
+def two_point_correlation(psi, N, i):
+  """
+  two_point_correlation : 
+    Compute the two-point correlation function C_{i,i+1} = <psi|σ_z^i σ_z^i+1|psi>
+    for a given quantum state using sparse matrices.
+
+  Parameters
+  ----------
+  psi : np.ndarray
+    Ground state wavefunction of the system.
+  N : int
+    Number of spins in the system.
+  i : int
+    Index of the first spin.
+
+  Returns
+  -------
+  correlation : float
+    Two-point correlation function C_{i,i+1}.
+  """
+  # Validate input indices
+  if not (0 <= i < N):
+    raise ValueError(f"Index i must be in range [0, N-1], got i={i}.")
+
+  # Pauli z matrix as a sparse matrix
+  s_z = sp.csr_matrix([[1, 0], [0, -1]], dtype=complex)
+
+  # Initialize the operator as the identity matrix
+  operator = sp.identity(1, format="csr")
+
+  # Construct σ_z^i σ_z^i+1 using Kronecker products
+  for k in range(N):
+    if k == i or k == i + 1:
+      operator = sp.kron(operator, s_z, format="csr")
+    else:
+      operator = sp.kron(operator, sp.identity(2, format="csr"), format="csr")
+
+  # Compute the expectation value
+  psi_sparse = sp.csr_matrix(psi).reshape(-1, 1)
+  correlation = np.abs(np.real((psi_sparse.getH() @ (operator @ psi_sparse)).toarray().item()))
+
+  return correlation
+
+# ===========================================================================================================  
+
+def plot_correlations(N_values, l_values, eigenvectors):
+  """
+  plot_correlations : 
+    Compute and plot the two-point correlation function for different eigenvectors and lambdas.
+
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  l_values : list of float
+    Values of l, interaction strength.
+  eigenvectors : dict
+    Precomputed eigenvectors for every (N, l).
+    
+  Returns
+  -------
+  None
+  """
+  plt.figure(figsize=(8, 5))
+
+  # Loop over system sizes
+  for N in N_values:
+    correlations = []
+
+    # Choose random spins i
+    i = np.random.choice(range(N))
+
+    # Loop over lambda values
+    for l in l_values:
+      correlation = two_point_correlation(eigenvectors[(N, l)][0], N, i)
+      correlations.append(correlation)
+
+    plt.plot(l_values, correlations, marker='^', linestyle='--', label=f"N={N}", markersize=3)
+
+  plt.axvline(x=1, linestyle="--", color="red", label="Critical point")
+
+  # Plot formatting
+  plt.xlabel("Interaction strength (λ)")
+  plt.ylabel("Two-point correlation function")
+  plt.title(f"Two-point correlation function vs λ")
+  plt.xscale("log")
+  plt.legend(loc="lower right")
+  plt.grid()
+  plt.show()
+
+# ===========================================================================================================  
+
+def fit_correlation_scaling(N_values, C_values):
+  """
+  fit_correlation_scaling :
+    Fit the two-point correlation function data to the finite-size scaling relation.
+
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  C_values : list of float
+    Correlation function values for each N.
+    
+  Returns
+  -------
+  fit_params : np.ndarray
+    The parameters of the fit.
+  fit_errors : np.ndarray
+    The standard errors of the fit parameters.
+  """
+  # Convert inputs to numpy arrays for easier filtering
+  N_values = np.array(N_values)
+  C_values = np.array(C_values)
+
+  # Filter out invalid values
+  valid_indices = C_values > 0
+  if not np.all(valid_indices):
+    print(f"Warning: Found non-positive values in correlation data. These will be excluded.")
+
+  # Use only valid values
+  log_N = np.log(N_values[valid_indices])
+  log_C = np.log(C_values[valid_indices])
+
+  # Define the scaling function
+  def scaling_fn(log_N, eta, const):
+    return -eta / 2 * log_N + const
+
+  # Perform the curve fitting
+  fit_params, covariance = curve_fit(scaling_fn, log_N, log_C)
+  fit_errors = np.sqrt(np.diag(covariance))
+
+  # Plot the data and the fit
+  plt.figure(figsize=(8, 6))
+  plt.plot(log_N, log_C, 'o', label='Data')
+  plt.plot(log_N, scaling_fn(log_N, *fit_params), '-', label=f'Fit: η = {fit_params[0]:.4f}')
+  plt.xlabel('ln(N)')
+  plt.ylabel('ln(two-point correlation function)')
+  plt.title('Correlation scaling with N (at λ=1)')
+  plt.legend(fontsize=10)
+  plt.grid(True)
+  plt.show()
+
+  return fit_params, fit_errors
+
+# ===========================================================================================================  
+
+def analyze_correlation_scaling(N_values, eigenvectors):
+  """
+  analyze_correlation_scaling :
+    Analyze the finite-size scaling of the two-point correlation function.
+
+  Parameters
+  ----------
+  N_values : list of int
+    Values of N, number of spins in the system.
+  eigenvectors : dict
+    Precomputed eigenvectors for every (N, l).
+
+  Returns
+  -------
+  None
+  """
+  correlation_values = []
+  
+  # Compute two-point correlations for each system size
+  for N in N_values:
+    i = 4
+    correlation = two_point_correlation(eigenvectors[(N, 1)][0], N, i)
+    correlation_values.append(correlation)
+
+  # Fit finite-size scaling
+  fit_params, fit_errors = fit_correlation_scaling(N_values, correlation_values)
+
+  print(f"Estimated η: {fit_params[0]} +/- {fit_errors[0]}")
