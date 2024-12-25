@@ -458,16 +458,15 @@ def analyze_entropy_scaling(N_values, eigenvectors):
   -------
   None
   """
-  normalized_entropies = []
+  entropies = []
 
   # Compute normalized entropies for all system sizes
   for N in N_values:
-    D = 2
-    entropy = von_neumann_entropy(eigenvectors[(N, 1)][0], N, D, list(range(N // 2)))
-    normalized_entropies.append(entropy)
+    entropy = von_neumann_entropy(eigenvectors[(N, 1)][0], N, 2, list(range(N // 2)))
+    entropies.append(entropy)
 
   # Fit entropy scaling
-  fit_params, fit_errors = fit_entropy_scaling(N_values, normalized_entropies)
+  fit_params, fit_errors = fit_entropy_scaling(N_values, entropies)
 
   print(f"Estimated central charge: {fit_params[0]} +/- {fit_errors[0]}")
   
@@ -601,7 +600,7 @@ def fit_correlation_scaling(N_values, C_values):
 
   # Define the scaling function
   def scaling_fn(log_N, eta, const):
-    return -eta / 2 * log_N + const
+    return -eta * log_N + const
 
   # Perform the curve fitting
   fit_params, covariance = curve_fit(scaling_fn, log_N, log_C)
