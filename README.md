@@ -27,3 +27,7 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
 ### 6. **Assignment 6: Density matrices**
    - **Description**: This assignment focuses on density matrices in quantum systems: the focus is on describing a composite system for both separable and general N-body pure states and density matrix representation.
    - **Report**: [Final report](./Assignment6/Assignment6%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
+
+### 7. **Assignment 7: Ising model**
+   - **Description**: This assignment focuses on imlpementing the 1D transverse field Ising model for a number N of spin-1/2 particles. In particular, the quantum phase transition of the model is investigated, highlighting the behaviour of the order parameters for different interaction strengths.
+   - **Slides**: [Final slides](./Assignment7/Assignment7%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
