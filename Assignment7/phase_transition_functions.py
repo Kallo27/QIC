@@ -474,7 +474,7 @@ def analyze_entropy_scaling(N_values, eigenvectors):
 # TWO POJNT CORRELATION
 # ===========================================================================================================  
 
-def two_point_correlation(psi, N, i):
+def two_point_correlation(ground_state, N, i):
   """
   two_point_correlation : 
     Compute the two-point correlation function C_{i,i+1} = <psi|σ_z^i σ_z^i+1|psi>
@@ -482,7 +482,7 @@ def two_point_correlation(psi, N, i):
 
   Parameters
   ----------
-  psi : np.ndarray
+  ground_state : np.ndarray
     Ground state wavefunction of the system.
   N : int
     Number of spins in the system.
@@ -495,25 +495,20 @@ def two_point_correlation(psi, N, i):
     Two-point correlation function C_{i,i+1}.
   """
   # Validate input indices
-  if not (0 <= i < N):
+  if not (0 <= i < N-1):
     raise ValueError(f"Index i must be in range [0, N-1], got i={i}.")
 
   # Pauli z matrix as a sparse matrix
-  s_z = sp.csr_matrix([[1, 0], [0, -1]], dtype=complex)
+  _, _, s_z = im.pauli_matrices()
 
-  # Initialize the operator as the identity matrix
-  operator = sp.identity(1, format="csr")
+  # Initialize the operator
+  operator = sp.csr_matrix((2**N, 2**N), dtype=complex)
 
-  # Construct σ_z^i σ_z^i+1 using Kronecker products
-  for k in range(N):
-    if k == i or k == i + 1:
-      operator = sp.kron(operator, s_z, format="csr")
-    else:
-      operator = sp.kron(operator, sp.identity(2, format="csr"), format="csr")
+  # Construct σ_z^i σ_z^i+1 operator
+  operator = sp.kron(sp.identity(2**i, format='csr'), sp.kron(s_z, sp.kron(s_z, sp.identity(2**(N - i - 2), format='csr'))))
 
   # Compute the expectation value
-  psi_sparse = sp.csr_matrix(psi).reshape(-1, 1)
-  correlation = np.abs(np.real((psi_sparse.getH() @ (operator @ psi_sparse)).toarray().item()))
+  correlation = np.real(ground_state.conj().transpose().dot(operator.dot(ground_state)))
 
   return correlation
 
@@ -544,7 +539,7 @@ def plot_correlations(N_values, l_values, eigenvectors):
     correlations = []
 
     # Choose random spins i
-    i = np.random.choice(range(N))
+    i = np.random.choice(range(N-1))
 
     # Loop over lambda values
     for l in l_values:
