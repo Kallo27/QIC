@@ -142,7 +142,7 @@ def plot_eigenvalues(N_values, l_values, eigenvalues):
     plt.figure(figsize=(8, 5))
     
     # Compute the number of available eigenvalues
-    k = len(eigenvalues[N, l_values[0]])
+    k = len(eigenvalues[(N, l_values[0])])
       
     # Loop over the first k levels
     for level in range(k):
