@@ -86,10 +86,11 @@ def diagonalize_ising(N_values, l_values, k):
 
   Returns
   -------
-  eigenvalues, eigenvectors : tuple of dict
-    Eigenvalues and eigenvectors of the Ising Hamiltonian for different
-    values of N and l.
+  energy_densities, eigenvalues, eigenvectors : tuple of dict
+    Energy densities, eigenvalues and eigenvectors of the Ising Hamiltonian 
+    for different values of N and l.
   """
+  energy_densities = {}
   eigenvalues = {}
   eigenvectors = {}
   
@@ -105,15 +106,12 @@ def diagonalize_ising(N_values, l_values, k):
       
       eigval, eigvec = sp.linalg.eigsh(H, k=x, which='SA')  # Compute the smallest `k` eigenvalues
       eigvec = eigvec.T
-
-      for i in range(x):
-        eigvec[i] /= np.linalg.norm(eigvec[i])
-        
+      
+      energy_densities[(N, l)] = eigval / N
       eigenvalues[(N, l)] = eigval
       eigenvectors[(N, l)] = eigvec
   
-  return eigenvalues, eigenvectors
-
+  return energy_densities, eigenvalues, eigenvectors
 
 # ===========================================================================================================
 
