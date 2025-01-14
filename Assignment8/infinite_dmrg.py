@@ -17,19 +17,20 @@ import ising_model as im
 
 def initialize_operators(m, l):
   """
-  initialize_operators _summary_
+  initialize_operators :
+    Initializes operators for the iDMRG algorithm
 
   Parameters
   ----------
-  m : _type_
-      _description_
-  l : _type_
-      _description_
+  m : int
+    Quenched size.
+  l : float
+    Interaction strength.
 
   Returns
   -------
-  _type_
-      _description_
+  A_L_0, B_L_0, A_R_0, B_R_0, H_L_0, H_R_0 : tuple of csr matrices
+    Initialized operators for the iDMRG algorithm.
   """
   s_x, _, _ = im.pauli_matrices()
   
@@ -44,6 +45,32 @@ def initialize_operators(m, l):
 # ===========================================================================================================
 
 def compute_H_LR(H_L, H_R, A_L, B_L, A_R, B_R, l):
+  """
+  compute_H_LR :
+    Computes the left ad right operators of the enlarged system.
+
+  Parameters
+  ----------
+  H_L : csr matrix
+    Current left Hamiltonian.
+  H_R : csr matrix
+    Current right Hamiltonian.
+  A_L : csr matrix
+    Left non-interaction operator
+  B_L : csr matrix
+    Left interaction operator
+  A_R : csr matrix
+    Right non-interaction operator
+  B_R : csr matrix
+    Right interaction operator
+  l : float
+    Interaction strength.
+
+  Returns
+  -------
+  H_L1, H_R1 : tuple of csr matrices
+    Left and right operators of the enlarged system.
+  """
   s_x, _, s_z = im.pauli_matrices()
   H_L1 = sp.kron(H_L, sp.identity(2, format='csr')) + sp.kron(A_L, l * s_z) + sp.kron(B_L, s_x)
   H_R1 = sp.kron(sp.identity(2, format='csr'), H_R) + sp.kron(l * s_z, A_R) + sp.kron(s_x, B_R)
@@ -52,6 +79,20 @@ def compute_H_LR(H_L, H_R, A_L, B_L, A_R, B_R, l):
 # ===========================================================================================================
 
 def update_operators(m):
+  """
+  update_operators:
+    Updates operators before truncation.
+
+  Parameters
+  ----------
+  m : int
+    Quenched size.
+
+  Returns
+  -------
+  A_L_new, B_L_new, A_R_new, B_R_new : tuple of csr_matrices
+    Updated operators for the iDMRG algorithm.
+  """
   s_x, _, _ = im.pauli_matrices()
   
   A_L_new = A_R_new = sp.identity(2**(m+1), format='csr')
@@ -64,6 +105,24 @@ def update_operators(m):
 # ===========================================================================================================
 
 def compute_H_2m(H_L1, H_R1, m):
+  """
+  compute_H_2m : 
+    Computes enlarged Hamiltonian for the iDMRG algorithm.
+
+  Parameters
+  ----------
+  H_L1 : csr matrix
+    Enlarged left operator.
+  H_R1 : csr matrix
+    Enlarged right operator.
+  m : int
+    Quenched size.
+
+  Returns
+  -------
+  H_2m : csr matrix
+      _description_
+  """
   s_x, _, _ = im.pauli_matrices()
   I_m = sp.identity(2**(m), format='csr')
   I_m1 = sp.identity(2**(m+1), format='csr')
@@ -129,7 +188,22 @@ def rdm(psi, N, D, keep_indices):
 # ===========================================================================================================
 
 def projector(rho_L, k):
-  
+  """
+  projector :
+    Builds (2**m, k) projector for the iDMRG algorithm.
+
+  Parameters
+  ----------
+  rho_L : csr matrix
+    Reduced density matrix
+  k : int
+    Number of eigenvectors to keep after truncation.
+
+  Returns
+  -------
+  proj _ csr matrix
+    (2**m, k) projector for the iDMRG algorithm.
+  """
   if k > rho_L.shape[0]:
     raise ValueError(f"'k' must be <= the dimension of rho_L, got k={k} and dim={rho_L.shape[0]}")
 
@@ -140,6 +214,34 @@ def projector(rho_L, k):
 # ===========================================================================================================
 
 def truncate_operators(P_L, P_R, A_L, B_L, A_R, B_R, H_L, H_R):
+  """
+  truncate_operators :
+    Truncates operator using the (2**m, k) projector for the iDMRG algorithm.
+
+  Parameters
+  ----------
+  P_L : csr matrix
+    Left projector.
+  P_R : csr matrix
+    Right projector.
+  A_L : csr matrix
+    Left non-interaction operator
+  B_L : csr matrix
+    Left interaction operator
+  A_R : csr matrix
+    Right non-interaction operator
+  B_R : csr matrix
+    Right interaction operator
+  H_L : csr matrix
+    Current left Hamiltonian.
+  H_R : csr matrix
+    Current right Hamiltonian.
+
+  Returns
+  -------
+  A_L_trunc, B_L_trunc, A_R_trunc, B_R_trunc, H_L_trunc, H_R_trunc : tuple of csr matrices
+    Truncated operators of size (k, k)
+  """
   P_L_dagger = P_L.conj().T
   P_R_dagger = P_R.conj().T
   
@@ -157,18 +259,24 @@ def truncate_operators(P_L, P_R, A_L, B_L, A_R, B_R, H_L, H_R):
 
 def infinite_dmrg(l, m_0, m_max, threshold=1e-6, max_iter=100, verb=False):
   """
-  Infinite DMRG function for a 1D quantum system.
-
+  infinite_dmrg : 
+    Iteratively applies iDMRG to compute the ground-state energy density 
+    and wavefunction for a system starting at size 2*m_0.
+    
   Parameters
   ----------
   l : float
-      Coupling parameter (e.g., transverse field strength).
+    Interaction strength.
+  m_0 : int
+    Quenched size.
   m_max : int
-      Maximum number of states to retain during truncation.
+    Maximum number of states to keep after truncation.
   convergence_threshold : float, optional
-      Convergence criterion for the energy difference between iterations.
-  max_iterations : int, optional
-      Maximum number of iterations allowed.
+      Convergence threshold for the iDMRG algorithm.
+  max_iter : int, optional
+    Maximum number of iteration allowed. Default is 100.
+  verb : bool, optional
+    Verbosity flag. Default is False
 
   Returns
   -------
@@ -236,6 +344,30 @@ def infinite_dmrg(l, m_0, m_max, threshold=1e-6, max_iter=100, verb=False):
 # ===========================================================================================================
 
 def update_hamiltonian(l_values, m_0, m_max, threshold, max_iter=100):
+  """
+  update_hamiltonian :
+    Evaluates ground-state energy densities, eigenvalues, and wavefunctions 
+    for different values of the interaction strength lambda. 
+
+  Parameters
+  ----------
+  l_values : float
+    Values of the interaction strength.
+  m_0 : 
+    Quenched size.
+  m_max :
+    Maximum size for truncation.
+  threshold : float
+    Convergence threshold for the iDMRG algorithm.
+  max_iter : int, optional
+    Maximum number of iteration allowed. Default is 100.
+
+  Returns
+  -------
+  gs_density_dict, gs_energy_dict, gs_dict, dims: tuple of dict
+    Dictionaries for different values of system size and l, which contain the current 
+    energy densities, the ground energies and wavefunctions and the reached dimensions.
+  """
   # Initialize dictionaries to store eigenvalues and eigenvectors
   gs_density_dict = {}
   gs_energy_dict = {}

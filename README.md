@@ -29,5 +29,9 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
    - **Report**: [Final report](./Assignment6/Assignment6%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
 
 ### 7. **Assignment 7: Ising model**
-   - **Description**: This assignment focuses on imlpementing the 1D transverse field Ising model for a number N of spin-1/2 particles. In particular, the quantum phase transition of the model is investigated, highlighting the behaviour of the order parameters for different interaction strengths.
+   - **Description**: This assignment focuses on implementing the 1D transverse field Ising model for a number N of spin-1/2 particles. In particular, the quantum phase transition of the model is investigated, highlighting the behaviour of the order parameters for different interaction strengths.
    - **Slides**: [Final slides](./Assignment7/Assignment7%20-%20Calandra%20Buonaura%20Lorenzo%20-%20SLIDES.pdf)
+
+### 8. **Assignment 8: Renormalization Groups**
+   - **Description**: This assignment focuses on implementing the real-space RG and the infinite density matrix RG for the 1D transverse field Ising model. In particular, the two algorithm are compared to exact diagonalization (from Assignment 7) and mean-field approximation; then, the computational efficiency of the two algorithms are studied.
+   - **Report**: [Final report](./Assignment7/Assignment8%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)

@@ -18,6 +18,20 @@ import ising_model as im
 # ===========================================================================================================
 
 def initialize_A_B(N):
+  """
+  initialize_A_B:
+    Initializes A, B for the RSRG algorithm.
+
+  Parameters
+  ----------
+  N : int
+    Quenched size.
+
+  Returns
+  -------
+  A_0, B_0 : tuple of csr matrices
+    Initialized operators for the RSRG algorithm.
+  """
   s_x, _, _ = im.pauli_matrices()
   
   A_0 = sp.kron(sp.identity(2**(N - 1), format='csr'), s_x)
@@ -27,14 +41,50 @@ def initialize_A_B(N):
 
 # ===========================================================================================================
 
-def compute_H_2N(N, H, A, B):  
+def compute_H_2N(N, H, A, B):
+  """
+  compute_H_2N :
+    Computes the enlarged Hamiltonian for the RSRG algorithm.
+
+  Parameters
+  ----------
+  N : int
+    Quenched size.
+  H : csr matrix
+    Current Hamiltonian (size N)
+  A : csr matrix
+    Left interaction operator
+  B : csr matrix
+    Right interaction operator
+
+  Returns
+  -------
+  H_2N : csr matrix
+    Enlarged Hamiltonian for the RSRG algorithm (size 2N).
+  """
   H_2N = sp.kron(H, sp.identity(2**(N), format='csr')) + sp.kron(sp.identity(2**(N), format='csr'), H) + sp.kron(A, B)
   return H_2N
 
 # ===========================================================================================================
 
-def projector(H, d_eff):
-  _, eigvecs = sp.linalg.eigsh(H, k=d_eff, which='SA')  # Compute the smallest `k` eigenvalues
+def projector(H_2N, d_eff):
+  """
+  projector :
+    Builds the (N, d_eff) projector for the RSRG algorithm. 
+
+  Parameters
+  ----------
+  H_2N : csr matrix
+    Enlarged Hamiltonian (size 2N).
+  d_eff : int
+    Number of eigenvectors to keep during truncation.
+
+  Returns
+  -------
+  proj : csr matrix
+    (N, d_eff) projector for the RSRG algorithm. 
+  """
+  _, eigvecs = sp.linalg.eigsh(H_2N, k=d_eff, which='SA')  # Compute the smallest `k` eigenvalues
     
   proj = sp.csr_matrix(eigvecs)
 
@@ -43,6 +93,26 @@ def projector(H, d_eff):
 # ===========================================================================================================
 
 def update_operators(N, H_2N, A, B):
+  """
+  update_operators :
+    Truncates the operators using projector P.
+
+  Parameters
+  ----------
+  N : int
+    Quenched size.
+  H_2N : csr matrix
+    Enlarged Hamiltonian (size 2N)
+  A : csr matrix
+    Left interaction operator
+  B : csr matrix
+    Right interaction operator
+
+  Returns
+  -------
+  H_eff, A_eff, B_eff, P : tuple of csr matrices
+    Truncated operators (and projector).
+  """
   P = projector(H_2N, d_eff=2**N)
   
   P_dagger = P.conj().T
@@ -58,6 +128,31 @@ def update_operators(N, H_2N, A, B):
 # ===========================================================================================================
   
 def real_space_rg(N, l, threshold, d_eff, max_iter=100, verb=False):
+  """
+  real_space_rg:
+    Iteratively applies RSRG to compute the ground-state energy density 
+    and wavefunction for a system starting at size N.
+
+  Parameters
+  ----------
+  N : int
+    Quenched size.
+  l : float
+    Interaction strength.
+  threshold : float
+    Convergence threshold for the RSRG algorithm. 
+  d_eff : int
+    Number of eigenvectors to keep during truncation.
+  max_iter : int, optional
+    Maximum number of iteration allowed. Default is 100.
+  verb : bool, optional
+    Verbosity flag. Default is False
+
+  Returns
+  -------
+  current_energy_density, E_ground, psi_ground, curr_dim : tuple
+    Current energy density, ground energy and wavefunction, reached dimension.
+  """
   prev_energy_density = np.inf
   H = im.ising_hamiltonian(N, l)
   A, B = initialize_A_B(N)
@@ -96,6 +191,28 @@ def real_space_rg(N, l, threshold, d_eff, max_iter=100, verb=False):
 # ===========================================================================================================
 
 def update_hamiltonian(N, l_values, threshold, max_iter=100):
+  """
+  update_hamiltonian :
+    Evaluates ground-state energy densities, eigenvalues, and wavefunctions 
+    for different values of the interaction strength lambda. 
+
+  Parameters
+  ----------
+  N : int
+    Quenched size.
+  l_values : float
+    Values of the interaction strength.
+  threshold : float
+    Convergence threshold for the RSRG algorithm.
+  max_iter : int, optional
+    Maximum number of iteration allowed. Default is 100.
+
+  Returns
+  -------
+  gs_density_dict, gs_energy_dict, gs_dict, dims: tuple of dict
+    Dictionaries for different values of system size and l, which contain the current 
+    energy densities, the ground energies and wavefunctions and the reached dimensions.
+  """
   # Initialize dictionaries to store eigenvalues and eigenvectors
   gs_density_dict = {}
   gs_energy_dict = {}
