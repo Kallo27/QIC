@@ -1,0 +1,4 @@
+The packages useful for the project are:
+
+quocs-lib -> https://pypi.org/project/quocs-lib/ 
+pytrans -> https://pypi.org/project/pytrans/

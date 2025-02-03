@@ -35,3 +35,14 @@ Welcome to the repository for the Quantum Information and Computing (QIC) course
 ### 8. **Assignment 8: Renormalization Groups**
    - **Description**: This assignment focuses on implementing the real-space RG and the infinite density matrix RG for the 1D transverse field Ising model. In particular, the two algorithm are compared to exact diagonalization (from Assignment 7) and mean-field approximation; then, the computational efficiency of the two algorithms are studied.
    - **Report**: [Final report](./Assignment7/Assignment8%20-%20Calandra%20Buonaura%20Lorenzo%20-%20REPORT.pdf)
+
+## Project: Optimal control transport of trapped ions
+The final project of the course regards the topic of transporting trapped ions, which is a crucial technique in ion-based experiments, involving optimization to minimize excitation during movement.
+
+- **Key tasks:**
+   1. Simulate the optimal control transport of a single ion in a 1D harmonic potential, minimizing excitation. Optionally, extend to two ions with controls for position and trap frequency.
+   2. Develop an electrostatic model for a realistic ion trap and calculate voltage waveforms to implement the optimal trajectory.
+
+- **References:**  
+   - [Optimal control transport of neutral atoms](https://doi.org/10.1103/PhysRevResearch.6.033282)  
+   - Tools: [quocs-lib](https://pypi.org/project/quocs-lib/), [pytrans](https://pypi.org/project/pytrans/)  
