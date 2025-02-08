@@ -177,8 +177,7 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
         psi[:, i] *= -1
   
   # Normalization and transposition
-  dx = x[1] - x[0]
-  psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0) * dx)  
+  psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0))  
   return psi[:n_max+1].astype(complex)
 
 
