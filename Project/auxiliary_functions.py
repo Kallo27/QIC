@@ -130,7 +130,7 @@ def hamiltonian(x, omega, order=2):
 
 # ===========================================================================================================
 
-def harmonic_oscillator_spectrum(x, omega, order=2, n=0):
+def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
   """
   harmonic_oscillator_spectrum:
     Computes the eigenvalues and eigenfunctions of the harmonic oscillator
@@ -179,7 +179,7 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n=0):
   # Normalization and transposition
   dx = x[1] - x[0]
   psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0) * dx)  
-  return psi[n]
+  return psi[:n_max+1].astype(complex)
 
 
 def hermite(x, n):
