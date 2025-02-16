@@ -178,7 +178,7 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
   
   # Normalization and transposition
   psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0))  
-  return psi[:n_max+1].astype(complex)
+  return psi[:n_max].astype(complex)
 
 
 def hermite(x, n):
@@ -213,7 +213,7 @@ def hermite(x, n):
 
 # ===========================================================================================================
 
-def harmonic_wfc(x, omega, n=0):
+def harmonic_wfc(x, omega, n_max):
   """
   harmonic_wfc:
     Wavefunction of order 'n' for a harmonic potential, 
@@ -238,12 +238,19 @@ def harmonic_wfc(x, omega, n=0):
   # Grid
   dx = x[1] - x[0]
   
-  # Components of the analytical solution for stationary states.
-  prefactor = 1 / np.sqrt(2**n * factorial(n)) * (omega / np.pi)**0.25
-  exponential = np.exp(- (omega * x**2) / 2)
+  wfcs = []
   
-  # Complete wavefunction, with normalization
-  psi = prefactor * exponential * hermite(x * np.sqrt(omega), n)
-  psi_normalized = psi / np.sqrt(np.sum(np.abs(psi)**2) * dx)
+  for n in range(n_max):
+    # Components of the analytical solution for stationary states.
+    prefactor = 1 / np.sqrt(2**n * factorial(n)) * (omega / np.pi) ** 0.25
+    exponential = np.exp(- (omega * x**2) / 2)
+
+    # Complete wavefunction, with normalization
+    psi = prefactor * exponential * hermite(x * np.sqrt(omega), n)
+    psi_normalized = psi / np.sqrt(np.sum(np.abs(psi)**2))
+    
+    wfcs.append(psi_normalized.astype(complex))
   
-  return psi_normalized
+  wfcs = np.array(wfcs)
+  
+  return wfcs
