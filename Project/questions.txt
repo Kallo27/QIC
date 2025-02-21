@@ -1,6 +1,0 @@
-1. How to asses problem of FoM = 0.
-2. What is this Javg?? Should i compute it? How?
-3. Should I do the analysis also for the piecewise basis and then do the comparison?
-4. What is intendend when saying find the trajectory with minimum excitation?
-5. What parameters should i use for my simulations?
-6. How do i set up COM and STR modes?

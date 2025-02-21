@@ -1,16 +1,8 @@
-###############################################
-## QUANTUM INFORMATION AND COMPUTING 2024/25 ##
-###############################################
-
-# Assignment 4 - QUANTUM HARMONIC OSCILLATOR
-
-
 # ===========================================================================================================
 # IMPORT ZONE
 # ===========================================================================================================
 
 import numpy as np
-import debugger as db
 
 from scipy.linalg import eigh
 from scipy.special import factorial
@@ -89,7 +81,7 @@ def kinetic_matrix(x, order=2):
     offsets = [0, 1, -1, 2, -2, 3, -3, 4, -4]
   
   else:
-    db.checkpoint(debug=True, msg1="APPROXIMATION ORDER", msg2="Unsupported order. Please choose order = 2, 4, 6, or 8.", stop=True)
+    raise ValueError(f"Unsupported order (order = {order}). \nPlease choose order = 2, 4, 6, or 8.")
   
   # Create the sparse matrix using scipy.sparse.diags
   K = diags(diagonals, offsets, format="csr")
@@ -144,12 +136,12 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
     Angular frequency of the harmonic oscillator.
   order : int, optional
     Order of finite difference approximation. Default is 2.
-  n : int, optional
-    Order of the wavefunction. By default 0 (ground state).
+  n_max : int, optional
+    Number of wavefunctions to return. Default is 1 (ground state).
 
   Returns
   -------
-  psi : np.ndarray
+  np.ndarray
     Normalized wavefunctions.
   """
   # Eigenvalues and eigenfunctions computation
@@ -201,7 +193,7 @@ def hermite(x, n):
   """
   # Pre-condition: n>=0
   if n < 0:
-    db.checkpoint(debug=True, msg=f"The order of the Hermite polynomial is not valid (n={n}, expected n>=0)", stop=True)
+    raise ValueError(f"The order of the Hermite polynomial is not valid (n={n}, expected n>=0)")
 
   # Coefficients set to 0 except for the one of order n.
   herm_coeffs = np.zeros(n + 1)
@@ -227,7 +219,7 @@ def harmonic_wfc(x, omega, n_max):
     Spatial grid used for discretization.
   omega : float
     Angular frequency of the harmonic oscillator.
-  n : int, optional
+  n_max : int, optional
     Order of the wavefunction. By default 0 (ground state).
 
   Returns
