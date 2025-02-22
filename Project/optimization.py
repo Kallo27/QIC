@@ -1,3 +1,8 @@
+import re
+import os
+import zipfile
+import numpy as np
+
 from quocslib.utils.AbstractFoM import AbstractFoM
 from qho_time_evolution import Operators, Param
 
@@ -37,3 +42,39 @@ class OptimalControl(AbstractFoM):
     FoM = self.opr.average_infidelity
     
     return {"FoM": FoM}
+
+
+
+def load_fom(timestamp):
+  file_path = f'./QuOCS_Results/{timestamp}_OptimalControldCRAB/{timestamp}_logging.log'
+  
+  if not os.path.exists(file_path):
+    raise FileNotFoundError(f"Error: The file '{file_path}' was not found.")
+
+  with open(file_path, 'r') as file:
+    fomlist = []
+    for line in file:
+      # Search for lines that contain "FoM" and extract the FoM value
+      match = re.search(r'FoM:\s([0-9\.]+)', line)
+      if match:
+        fomlist.append(float(match.group(1)))
+
+  return fomlist  # Don't forget to return the list!
+
+def load_best_results(timestamp):
+  file_path = f'./QuOCS_Results/{timestamp}_OptimalControldCRAB/{timestamp}_best_controls.npz'
+  
+  if not os.path.exists(file_path):
+    raise FileNotFoundError(f"Error: The file '{file_path}' was not found.")
+
+  with zipfile.ZipFile(file_path, 'r') as zip_ref:
+    # List all files inside the archive
+    file_names = zip_ref.namelist()
+    print("Files inside the archive:", file_names)
+
+    with zip_ref.open('time_grid_for_Pulse_1.npy') as time_file:
+      timegrid = np.load(time_file)
+    with zip_ref.open('Pulse_1.npy') as file:
+      pulse = np.load(file)
+    
+  return timegrid, pulse

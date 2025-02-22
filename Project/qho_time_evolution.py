@@ -59,6 +59,9 @@ class Param:
     self.dt = tsim / num_t
     self.dk = 2 * np.pi / (x_max - x_min)
     
+    # Store total evolution time
+    self.total_time = 0
+    
     # Check consistency in time-grids
     assert (np.allclose(self.dt, tc / num_tc))
 
@@ -141,6 +144,26 @@ def calculate_probabilities(energies, T):
     
   return probs
 
+def position_statistics(x, wavefunctions):
+  avg_positions = []
+  avg_positions_squared = []
+
+  for wfc in wavefunctions:
+    density = np.abs(wfc) ** 2
+    avg_x = np.sum(x * density)
+    avg_x2 = np.sum((x ** 2) * density)
+
+    avg_positions.append(avg_x)
+    avg_positions_squared.append(avg_x2)
+
+  avg_positions = np.array(avg_positions)
+  avg_positions_squared = np.array(avg_positions_squared)
+
+  # Compute standard deviation: σ_x = sqrt(⟨x²⟩ - ⟨x⟩²)
+  sigma_x = np.sqrt(avg_positions_squared - avg_positions ** 2)
+
+  return avg_positions, sigma_x
+
 
 # ===========================================================================================================
 # OPERATORS CLASS
@@ -175,6 +198,11 @@ class Operators:
     # Density matrices
     self.rho = []
     self.shifted_rho = []
+    
+    # Average position
+    self.avg_pos = []
+    self.sigma_x = []
+    self.total_drive = []
     
     # Infidelity
     self.average_infidelity = 0
@@ -263,12 +291,14 @@ class Operators:
     return infidelity
   
   
-  def split_op(self, par: Param, fixed_potential: bool = False):
+  def split_op(self, par: Param, fixed_potential: bool = False, compute_statistics: bool = False):
     # Set coefficient for real or imaginary time evolution
     coeff = 1 if par.im_time else 1j
     
     timesteps = par.num_t if not fixed_potential else par.num_tc
+    par.total_time += timesteps * par.dt
     drive = self.r_t if not fixed_potential else np.full(par.num_tc, self.r_t[-1])
+    self.total_drive.extend(drive)
 
     infidelities = []
     
@@ -293,23 +323,23 @@ class Operators:
         # Final half-step in real space
         self.wfcs[n] *= self.R
       
-      if fixed_potential:
-        # Compute updated quantities
-        self.energies = calculate_energies(self.wfcs, self.V, par)
-        self.probabilities = calculate_probabilities(self.energies, self.T)
-        self.rho = density_matrix(self.probabilities, self.wfcs, par.x, self.num_wfcs, self.omega, drive[i])
-        infidelities.append(self.infidelity())
-      
-    self.average_infidelity = np.mean(infidelities) if fixed_potential else 0
-
-  def time_evolution(self, par: Param, fixed_potential: bool = False):
-    # Apply split operator to wfcs
-    self.split_op(par, fixed_potential)
-    rf = self.r_t[-1] 
-    self.shifted_rho = density_matrix(self.probabilities, self.shifted_wfcs, par.x, self.num_wfcs, self.omega, rf)
-    
-    if not fixed_potential:
-      # Compute updated quantities
       self.energies = calculate_energies(self.wfcs, self.V, par)
       self.probabilities = calculate_probabilities(self.energies, self.T)
-      self.rho = density_matrix(self.probabilities, self.wfcs, par.x, self.num_wfcs, self.omega, rf)
+      self.rho = density_matrix(self.probabilities, self.wfcs, par.x, self.num_wfcs, self.omega, drive[i])
+      
+      if compute_statistics:  
+        positions, sigma = position_statistics(par.x, self.wfcs)
+        self.avg_pos.append(positions)
+        self.sigma_x.append(sigma)
+      
+      if fixed_potential:
+        infidelities.append(self.infidelity())
+    
+
+    self.average_infidelity = np.mean(infidelities) if fixed_potential else 0
+
+  def time_evolution(self, par: Param, fixed_potential: bool = False, compute_statistics: bool = False):
+    # Apply split operator to wfcs
+    self.split_op(par, fixed_potential, compute_statistics)
+    rf = self.r_t[-1] 
+    self.shifted_rho = density_matrix(self.probabilities, self.shifted_wfcs, par.x, self.num_wfcs, self.omega, rf)
