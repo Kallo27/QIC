@@ -121,3 +121,54 @@ def plot_optimization_process(fomlist, timegrid, pulse):
   # Adjust layout and show plot
   plt.tight_layout()
   plt.show()
+
+
+    
+# ===========================================================================================================
+# TEMPERATURE ANALYSIS
+# ===========================================================================================================
+
+def load_data_temp(filename):
+  """
+  Load data from a text file.
+  
+  Args:
+      filename (str): The name of the file containing the data.
+  
+  Returns:
+      dict: A dictionary where keys are unique T values and values are arrays with tsim and avg_inf.
+  """
+  data = np.loadtxt(filename)
+  data_dict = {}
+  
+  for T, tsim, avg_inf in data:
+    if T not in data_dict:
+      data_dict[T] = []
+    data_dict[T].append((tsim, avg_inf))
+  
+  for T in data_dict:
+    data_dict[T] = np.array(data_dict[T])
+  
+  return data_dict
+
+def plot_data_temp(data_dict):
+  """
+  Plot avg_inf as a function of tsim for different values of T.
+  
+  Args:
+    data_dict (dict): Dictionary containing temperature data.
+  """
+  plt.figure(figsize=(8, 6))
+  
+  for T, values in sorted(data_dict.items()):
+    tsim, avg_inf = values[:, 0], values[:, 1]
+    plt.plot(tsim, avg_inf, marker='o', linestyle='-', label=f'T={T}')
+  
+  plt.axhline(y=0.01, c='b', linestyle='--')
+  plt.xlabel("Simulation time")
+  plt.ylabel("J_avg")
+  plt.title("Figure of merit for different temperatures")
+  plt.legend()
+  plt.yscale('log')
+  plt.grid()
+  plt.show()

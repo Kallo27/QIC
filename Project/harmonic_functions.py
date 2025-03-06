@@ -175,35 +175,16 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
 
 def hermite(x, n):
   """
-  hermite:
-    Hermite polinomial of order 'n', 
-    defined over the real space grid 'x'.
-
-  Parameters
-  ----------
-  x : np.ndarray
-    Real space grid.
-  n : int
-    Order of the polinomial.
-
-  Returns
-  -------
-  herm_pol: np.ndarray
-    Hermite polinomial of order 'n'.
+  Hermite polynomial of order 'n', 
+  defined over the real space grid 'x'.
   """
-  # Pre-condition: n>=0
   if n < 0:
-    raise ValueError(f"The order of the Hermite polynomial is not valid (n={n}, expected n>=0)")
-
-  # Coefficients set to 0 except for the one of order n.
+    raise ValueError(f"Invalid order of Hermite polynomial: n={n}, expected n>=0")
+  
   herm_coeffs = np.zeros(n + 1)
   herm_coeffs[n] = 1
-  
-  # Actual computation of the polinomial over the space grid.
-  herm_pol = np.polynomial.hermite.hermval(x, herm_coeffs)
-  return herm_pol
+  return np.polynomial.hermite.hermval(x, herm_coeffs)
 
-# ===========================================================================================================
 
 def harmonic_wfc(x, omega, n_max):
   """

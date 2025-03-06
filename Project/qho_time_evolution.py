@@ -342,4 +342,4 @@ class Operators:
     # Apply split operator to wfcs
     self.split_op(par, fixed_potential, compute_statistics)
     rf = self.r_t[-1] 
-    self.shifted_rho = density_matrix(self.probabilities, self.shifted_wfcs, par.x, self.num_wfcs, self.omega, rf)
+    self.shifted_rho = density_matrix(self.probabilities, self.shifted_wfcs, par.x, self.num_wfcs, self.omega, rf) 
