@@ -1,5 +1,14 @@
+# ===========================================================================================================
+# IMPORT ZONE
+# ===========================================================================================================
+
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+# ===========================================================================================================
+# WAVEFUNCTIONS PLOTTING
+# ===========================================================================================================
 
 def plot_position_statistics(par, opr, num_wfc):
   """
@@ -10,15 +19,11 @@ def plot_position_statistics(par, opr, num_wfc):
   Parameters
   ----------
   par : Param
-    Parameters of the simulation.
+    Param instance containing the parameters of the simulation.
   opr : Operators
-    Contains the average position, position uncertainties, and drive function.
+    Operators instance containing the wavefunctions.
   num_wfc : int
-    The wavefunction index to plot.
-
-  Returns
-  -------
-  None
+    Wavefunction index to plot.
   """
   # Check if avg_pos has elements
   if not opr.avg_pos or len(opr.avg_pos) == 0:
@@ -65,8 +70,23 @@ def plot_position_statistics(par, opr, num_wfc):
   # Adjust layout and show plot
   plt.tight_layout()
   plt.show()
-  
+
+# ===========================================================================================================
+
 def plot_wavefunctions(par, opr, shifted=False):
+  """
+  plot_wavefunctions :
+    Plots wavefunctions.
+
+  Parameters
+  ----------
+  par : _type_
+    Param instance containing the parameters of the simulation.
+  opr : _type_
+    Operators instance containing the wavefunctions.
+  shifted : bool, optional
+    If true, plots shifted wavefunctions. By default False.
+  """
   wfcs = opr.wfcs if not shifted else opr.shifted_wfcs
   for i in range(opr.num_wfcs):
     plt.plot(par.x, abs(wfcs[i])**2)
@@ -79,6 +99,7 @@ def plot_wavefunctions(par, opr, shifted=False):
   plt.legend()
   plt.show()
   
+# ===========================================================================================================
 
 def plot_optimization_process(fomlist, timegrid, pulse):
   """
@@ -94,10 +115,6 @@ def plot_optimization_process(fomlist, timegrid, pulse):
     Time grid for the pulse.
   pulse : np.ndarray
     Pulse amplitude over time.
-
-  Returns
-  -------
-  None
   """
   fig, axs = plt.subplots(2, 1, figsize=(6, 8), sharex=False)
 
@@ -122,7 +139,6 @@ def plot_optimization_process(fomlist, timegrid, pulse):
   plt.tight_layout()
   plt.show()
 
-
     
 # ===========================================================================================================
 # TEMPERATURE ANALYSIS
@@ -130,13 +146,18 @@ def plot_optimization_process(fomlist, timegrid, pulse):
 
 def load_data_temp(filename):
   """
-  Load data from a text file.
+  load_data_temp : 
+    Load data from a text file.
   
-  Args:
-      filename (str): The name of the file containing the data.
+  Parameters
+  ----------
+    filename : str
+      The name of the file containing the data.
   
-  Returns:
-      dict: A dictionary where keys are unique T values and values are arrays with tsim and avg_inf.
+  Returns
+  -------
+    data_dict : dict
+      A dictionary where keys are unique T values and values are arrays with tsim and avg_inf.
   """
   data = np.loadtxt(filename)
   data_dict = {}
@@ -150,6 +171,8 @@ def load_data_temp(filename):
     data_dict[T] = np.array(data_dict[T])
   
   return data_dict
+
+# ===========================================================================================================
 
 def plot_data_temp(data_dict):
   """
