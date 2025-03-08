@@ -88,7 +88,6 @@ def kinetic_matrix(x, order=2):
   
   return K
 
-
 # ===========================================================================================================
 
 def hamiltonian(x, omega, order=2):
@@ -141,8 +140,8 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
 
   Returns
   -------
-  np.ndarray
-    Normalized wavefunctions.
+  psi : np.ndarray
+    First n_max normalized wavefunctions.
   """
   # Eigenvalues and eigenfunctions computation
   H = hamiltonian(x, omega, order)
@@ -169,27 +168,49 @@ def harmonic_oscillator_spectrum(x, omega, order=2, n_max=1):
         psi[:, i] *= -1
   
   # Normalization and transposition
-  psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0))  
-  return psi[:n_max].astype(complex)
+  psi = psi.T / np.sqrt(np.sum(np.abs(psi.T)**2, axis = 0))
+  psi = psi[:n_max].astype(complex)
+  
+  return psi
 
+
+# ===========================================================================================================
+# EXACT DIAGONALIZATION METHOD
+# ===========================================================================================================
 
 def hermite(x, n):
   """
-  Hermite polynomial of order 'n', 
-  defined over the real space grid 'x'.
+  hermite :
+    Computes the Hermite polynomial of order 'n', 
+    defined over the real space grid 'x'.
+
+  Parameters
+  ----------
+  x : np.ndarray
+    Real space grid.
+  n : int
+    Order of the polynomial.
+
+  Returns
+  -------
+  pol = np.ndarray
+    Hermite polynomial of order 'n'
   """
   if n < 0:
     raise ValueError(f"Invalid order of Hermite polynomial: n={n}, expected n>=0")
   
   herm_coeffs = np.zeros(n + 1)
   herm_coeffs[n] = 1
-  return np.polynomial.hermite.hermval(x, herm_coeffs)
+  pol = np.polynomial.hermite.hermval(x, herm_coeffs)
+  
+  return pol
 
+# ===========================================================================================================
 
-def harmonic_wfc(x, omega, n_max):
+def harmonic_wfc(x, omega, n_max=1):
   """
   harmonic_wfc:
-    Wavefunction of order 'n' for a harmonic potential, 
+    Computes the first 'n_max' wavefunctions for an harmonic potential, 
     defined over the real space grid 'x'.
   
     V(x) = 0.5 * omega * x**2
@@ -201,16 +222,13 @@ def harmonic_wfc(x, omega, n_max):
   omega : float
     Angular frequency of the harmonic oscillator.
   n_max : int, optional
-    Order of the wavefunction. By default 0 (ground state).
+    Maximum order of the wavefunction. By default 1 (ground state).
 
   Returns
   -------
   psi: np.ndarray
-    Normalized wavefunction of order 'n'.
+    First 'n_max' normalized wavefunctions.
   """
-  # Grid
-  dx = x[1] - x[0]
-  
   wfcs = []
   
   for n in range(n_max):
