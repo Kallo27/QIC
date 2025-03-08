@@ -7,6 +7,7 @@ import harmonic_functions as hfu
 
 from scipy.linalg import sqrtm
 
+
 # ===========================================================================================================
 # PARAM CLASS
 # ===========================================================================================================
@@ -41,6 +42,10 @@ class Param:
       Total simulation time.
     num_t : int
       Number of time steps.
+    tc : float
+      Additional in-place simulation time.
+    num_tc : int
+      Number of additional time steps.
     im_time : bool, optional
       Whether to use imaginary time evolution. Default is False.
     """
@@ -85,14 +90,32 @@ class Param:
       raise ValueError("xmax and tsim must be both positive integers. \nGot xmax={xmax} and tsim={tsim}.", stop=True)
 
 
-
 # ===========================================================================================================
 # AUXILIARY FUNCTIONS FOR OPERATOR CLASS
 # ===========================================================================================================
 
 def energy_basis(psi, x, num_wfcs, omega, delta_x):
   """
-  Project the wavefunction `psi` onto the energy eigenbasis (Hermite functions).
+  energy_basis :
+    Project the wavefunction `psi` onto the energy eigenbasis (Hermite functions).
+
+  Parameters
+  ----------
+  psi : np.ndarray
+    Wavefunctions to be projected.
+  x : np.ndarray
+    Spatial grid points where the wavefunctions are evaluated.
+  num_wfcs : int
+    Number of eigenfunctions used in the projection.
+  omega : float
+    Characteristic frequency of the harmonic oscillator.
+  delta_x : float
+    Spatial displacement applied to the eigenfunctions.
+
+  Returns
+  -------
+  coeff : np.ndarray
+    Projection coefficients of `psi` onto the energy eigenbasis.
   """
   # Initialize coefficients in energy basis
   coeff = np.zeros((num_wfcs, num_wfcs), dtype=complex)
@@ -102,9 +125,38 @@ def energy_basis(psi, x, num_wfcs, omega, delta_x):
   for n in range(num_wfcs):
     for i in range(num_wfcs):
       coeff[i, n] = true_psi[i] @ np.conj(psi[n])
-  return np.round(np.real_if_close(coeff), 4)
+  
+  coeff = np.round(np.real_if_close(coeff), 4)
+  
+  return coeff
+
+# ===========================================================================================================
 
 def density_matrix(probabilities, wavefunctions, x, num_wfcs, omega, delta_x):
+  """
+  density_matrix :
+    Compute the density matrix of a quantum system in the energy eigenbasis.
+
+  Parameters
+  ----------
+  probabilities : np.ndarray
+    Occupation probabilities of each wavefunction.
+  wavefunctions : np.ndarray
+    Set of wavefunctions representing the system.
+  x : np.ndarray
+    Spatial grid points where the wavefunctions are evaluated.
+  num_wfcs : int
+    Number of wavefunctions considered in the density matrix.
+  omega : float
+    Characteristic frequency of the harmonic oscillator.
+  delta_x : float
+    Displacement applied to the eigenfunctions.
+
+  Returns
+  -------
+  rho : np.ndarray
+    The computed density matrix in the energy eigenbasis.
+  """
   rho = 0
   rho = np.zeros((num_wfcs, num_wfcs), dtype=complex)
   coefficients = energy_basis(wavefunctions, x, num_wfcs, omega, delta_x)
@@ -114,10 +166,31 @@ def density_matrix(probabilities, wavefunctions, x, num_wfcs, omega, delta_x):
     
   rho /= np.trace(rho)
   rho = np.nan_to_num(rho, nan=0.0)
+  rho = np.round(np.real_if_close(rho), 4)
+  
+  return rho
 
-  return np.round(np.real_if_close(rho), 4)
+# ===========================================================================================================
 
 def calculate_energies(wavefunctions, potential, par: Param):
+  """
+  calculate_energies :
+    Compute the total energy of a quantum state given its wavefunction.
+
+  Parameters
+  ----------
+  wavefunctions : np.ndarray
+    Set of wavefunctions for which the energy is computed.
+  potential : np.ndarray
+    Potential energy function evaluated at the grid points.
+  par : Param
+    A parameter object containing the simultaions constants.
+
+  Returns
+  -------
+  energies : list of float
+    The computed energies for each wavefunction.
+  """
   energies = []
   
   for wfc in wavefunctions:
@@ -137,14 +210,51 @@ def calculate_energies(wavefunctions, potential, par: Param):
   
   return energies
 
+# ===========================================================================================================
+
 def calculate_probabilities(energies, T):
+  """
+  calculate_probabilities :
+    Compute the occupation probabilities of quantum states using the Boltzmann distribution.
+
+  Parameters
+  ----------
+  energies : list of float
+    Energy levels of the quantum system.
+  T : float
+    Temperature used in the Boltzmann factor.
+
+  Returns
+  -------
+  probs : np.ndarray
+    Normalized occupation probabilities of the states.
+  """
   # Store probabilities for mixed state density matrix
   probs = [np.exp(-energies[i] / T) for i in range(len(energies))]
   probs /= np.sum(probs)
     
   return probs
 
+# ===========================================================================================================
+
 def position_statistics(x, wavefunctions):
+  """
+  position_statistics :
+    Compute the expectation values and standard deviation of position.
+
+  Parameters
+  ----------
+  x : np.ndarray
+    Spatial grid points where the wavefunctions are evaluated.
+  wavefunctions : np.ndarray
+    Set of wavefunctions for which position statistics are computed.
+
+  Returns
+  -------
+  avg_positions, sigma_x : tuple of np.ndarray
+    The expectation value ⟨x⟩ for each wavefunction and 
+    the standard deviation of position, σ_x = sqrt(⟨x²⟩ - ⟨x⟩²).
+  """
   avg_positions = []
   avg_positions_squared = []
 
@@ -180,7 +290,25 @@ class Operators:
                T: float = 10e-6,
                r_t: list[float] = None,
                par: Param = None) -> None:
-
+    """
+    __init__ :
+      Initialize the Operators class.
+    
+    Parameters
+    ----------
+    res : int
+      Number of spatial grid points.
+    omega : float, optional
+      Angular frequency of the system. By default 1.0.
+    num_wfcs : int, optional
+      Number of wavefunctions to store. By default 1.
+    T : float, optional
+      Temperature for thermal-state calculations. By default 10e-6.
+    r_t : list[float], optional
+      Time-dependent drive. By default None.
+    par : Param, optional
+      Parameter object containing simulation parameters. By default None.
+    """
     # Initialize empty complex arrays for potential, propagators, and wavefunction
     self.V = np.empty(res, dtype=complex)  # Potential operator
     self.R = np.empty(res, dtype=complex)  # Real-space propagator
@@ -222,7 +350,17 @@ class Operators:
 
 
   def reinitialize_operators(self, par: Param, pulse) -> None:
-    """Reinitialize the operators with a new Param object."""
+    """
+    reinitialize_operators : 
+      Reinitialize the operators with a new Param object and pulse sequence.
+    
+    Parameters
+    ----------
+    par : Param
+      New parameter object for the simulation.
+    pulse : list[float]
+      New time-dependent drive sequence.
+    """    
     # Reinitialize potential, propagators, and wavefunctions
     self.V = np.empty(self.V.shape, dtype=complex)
     self.R = np.empty(self.R.shape, dtype=complex)
@@ -243,6 +381,15 @@ class Operators:
     self._initialize_operators(par)
 
   def _initialize_operators(self, par: Param) -> None:
+    """
+    _initialize_operators : 
+      Initialize the system's operators based on the given parameters.
+    
+    Parameters
+    ----------
+    par : Param
+      Parameter object containing simulation parameters.
+    """
     # Initial and final time-dependent offset
     r0 = self.r_t[0]
     rf = self.r_t[-1]
@@ -269,29 +416,79 @@ class Operators:
     self.rho = density_matrix(self.probabilities, self.wfcs, par.x, self.num_wfcs, self.omega, r0)
     self.shifted_rho = density_matrix(self.probabilities, self.shifted_wfcs, par.x, self.num_wfcs, self.omega, rf)
 
-
   def get_wavefunction(self, n):
-    """Retrieve the nth wavefunction."""
+    """
+    get_wavefunction : 
+      Retrieve the nth wavefunction.
+    
+    Parameters
+    ----------
+    n : int
+      Index of the wavefunction to retrieve.
+    
+    Returns
+    -------
+    wfc : np.ndarray
+      The nth wavefunction.
+    """
     if n >= self.num_wfcs:
       raise ValueError(f"Requested wavefunction n={n} exceeds num_wfcs={self.num_wfcs}. Indexing starts from 0.")
-    return self.wfcs[n]
+    wfc = self.wfcs[n]
+    
+    return wfc
 
   def get_shifted_wavefunction(self, n):
-    """Retrieve the nth wavefunction."""
+    """
+    get_shifted_wavefunction :
+      Retrieve the nth shifted wavefunction.
+    
+    Parameters
+    ----------
+    n : int
+      Index of the shifted wavefunction to retrieve.
+    
+    Returns
+    -------
+    wfc : np.ndarray
+      The nth shifted wavefunction.
+    """
     if n >= self.num_wfcs:
       raise ValueError(f"Requested wavefunction n={n} exceeds num_wfcs={self.num_wfcs}. Indexing starts from 0.")
-    return self.shifted_wfcs[n]
+    wfc = self.shifted_wfcs[n]
 
+    return wfc
       
   def infidelity(self):
+    """
+    infidelity :
+      Compute the infidelity between the initial and final density matrices.
+    
+    Returns
+    -------
+    infidelity : float
+      Infidelity measure between the initial and final state.
+    """
     overlap = np.trace(sqrtm(sqrtm(self.rho) @ self.shifted_rho @ sqrtm(self.rho)))
     infidelity = 1 - abs(overlap) ** 2
-    #infidelity = np.maximum(0, infidelity)
     infidelity = np.clip(infidelity, 1e-3, 1)
+    
     return infidelity
   
   
   def split_op(self, par: Param, fixed_potential: bool = False, compute_statistics: bool = False):
+    """
+    split_op:
+      Performs the time evolution with the split-operator approximation.
+
+    Parameters
+    ----------
+    par : Param
+      Param instance containing the parameters of the simulation.
+    fixed_potential : bool, optional
+      If true, performs evolution with a static potential. By default False.
+    compute_statistics : bool, optional
+      If true, computes positions statistics. By default False.
+    """
     # Set coefficient for real or imaginary time evolution
     coeff = 1 if par.im_time else 1j
     
@@ -339,6 +536,19 @@ class Operators:
     self.average_infidelity = np.mean(infidelities) if fixed_potential else 0
 
   def time_evolution(self, par: Param, fixed_potential: bool = False, compute_statistics: bool = False):
+    """
+    time_evolution
+      Performs time evolutions and computes the final density matrix.
+
+    Parameters
+    ----------
+    par : Param
+      Param instance containing the parameters of the simulation.
+    fixed_potential : bool, optional
+      If true, performs evolution with a static potential. By default False.
+    compute_statistics : bool, optional
+      If true, computes positions statistics. By default False.
+    """
     # Apply split operator to wfcs
     self.split_op(par, fixed_potential, compute_statistics)
     rf = self.r_t[-1] 
