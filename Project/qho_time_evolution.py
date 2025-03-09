@@ -532,8 +532,8 @@ class Operators:
       if fixed_potential:
         infidelities.append(self.infidelity())
     
-
     self.average_infidelity = np.mean(infidelities) if fixed_potential else 0
+
 
   def time_evolution(self, par: Param, fixed_potential: bool = False, compute_statistics: bool = False):
     """
